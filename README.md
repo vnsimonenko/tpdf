@@ -7,7 +7,7 @@ You can see the video for review demonstrating the work of tpdf.<br/>
 [demo.mp4](https://drive.google.com/open?id=0B7fAKmTRcC2IX3VTbmhXSXlocnM)
 
 -----
-### Feature:``**_````_**``
+### Feature:
 * linux or windows.
 
 -----
