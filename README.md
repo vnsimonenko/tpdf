@@ -7,7 +7,7 @@ You can see the video for review demonstrating the work of tpdf.<br/>
 [demo.mp4](https://drive.google.com/open?id=0B7fAKmTRcC2IX3VTbmhXSXlocnM)
 
 -----
-### Feature:
+### Feature:``**_````_**``
 * linux or windows.
 
 -----
@@ -15,4 +15,4 @@ You can see the video for review demonstrating the work of tpdf.<br/>
 ### Requirements and restrictions:
 * Its work requires jre 1.8
 * compile: mvn assembly:assembly -DdescriptorId=jar-with-dependencies -DskipTests
-* Launching from the command line: java -jar target/tpdf.jar --pdf=<file path> 
+* Launching from the command line: java -jar target/tpdf.jar --pdf=`<file path>` 
