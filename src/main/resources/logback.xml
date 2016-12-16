@@ -1,0 +1,27 @@
+<configuration>
+    <property resource="application.properties"/>
+    <property name="LOG_HOME" value="${LogDir}"/>
+    <property name="LOG_FILE_NAME" value="tpdf.log"/>
+    <property name="LOG_GL_FILE_NAME" value="gltpdf.log"/>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_HOME}/${LOG_FILE_NAME}</file>
+        <encoder>
+            <pattern>%date{ISO8601} %-5level %-5level %logger{36} %X{sourceThread} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="GLFILE" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_HOME}/${LOG_GL_FILE_NAME}</file>
+        <encoder>
+            <pattern>%date{ISO8601} %-5level %-5level %logger{36} %X{sourceThread} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="gllogger" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="GLFILE"/>
+    </logger>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>
