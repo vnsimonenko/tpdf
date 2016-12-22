@@ -19,16 +19,19 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -59,12 +62,15 @@ import org.slf4j.LoggerFactory;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
 import static java.awt.AWTEvent.KEY_EVENT_MASK;
+import static java.awt.event.KeyEvent.KEY_PRESSED;
 import static java.awt.event.KeyEvent.KEY_RELEASED;
 import static java.awt.event.KeyEvent.VK_ESCAPE;
 
 public class DocumentViewer extends JPanel {
     private static final String PREVIOUS = "previous";
     private static final String NEXT = "next";
+    private static final String HIS_PREVIOUS = "his_previous";
+    private static final String HIS_NEXT = "his_next";
     private static Logger logger;
     private final HistoryStore historyStore = new HistoryStore();
     private Map<String, JButton> buttonByCommandName = new HashMap<>();
@@ -205,6 +211,21 @@ public class DocumentViewer extends JPanel {
         }
     }
     
+    public void scroll(float x, float y) {
+        if (x > 0) {
+            int value = imageScrollPane.getHorizontalScrollBar().getValue();
+            imageScrollPane.getHorizontalScrollBar().setValue((int) (value + x));
+        }
+        if (y > 0) {
+            int value = imageScrollPane.getVerticalScrollBar().getValue();
+            imageScrollPane.getVerticalScrollBar().setValue((int) (value + y));
+        }
+    }
+    
+    public Viewer getViewer(int page) {
+        return pageViewer.get(page);
+    } 
+    
     private void addScalePage(JToolBar toolBar) {
         scale = new JComboBox<>(new Integer[]{25, 50, 75, 100, 125, 150, 175, 200});
         scale.setSelectedIndex(5);
@@ -279,27 +300,84 @@ public class DocumentViewer extends JPanel {
         
         toolBar.addSeparator();
         
-        addButtons(toolBar);
+        addNavButtons(toolBar);
     }
     
-    private void addButtons(JToolBar toolBar) {
+    private void addNavHisPages(JToolBar toolBar) {
+        toolBar.addSeparator();
+        
+        ActionListener listener = e -> {
+            if (e.getActionCommand().equals(HIS_PREVIOUS)) {
+                    navigateHistory(true);
+                pagesCombobox.setEditable(true);
+            } else if (e.getActionCommand().equals(HIS_NEXT)) {
+                navigateHistory(false);
+            }
+        };
+    
+        JButton button = makeNavigationButton("Back24", HIS_PREVIOUS,
+                "Previous history",
+                "Previous history", listener, null);
+        button.setEnabled(false);
+        toolBar.add(button);
+        button = makeNavigationButton("Forward24", HIS_NEXT,
+                "Next history",
+                "Next history", listener, null);
+        button.setEnabled(false);        
+        toolBar.add(button);
+    
+        Toolkit kit = Toolkit.getDefaultToolkit();
+        kit.addAWTEventListener(event -> {
+            if (event instanceof KeyEvent) {
+                KeyEvent e = (KeyEvent) event;
+                if (e.getID() == KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_Z || e.getKeyCode() == KeyEvent.VK_X) {
+                    pagesCombobox.setEditable(false);                    
+                    try {
+                        navigateHistory(e.getKeyCode() == KeyEvent.VK_Z);
+                    } finally {
+                        pagesCombobox.setEditable(true);
+                    }
+                }
+            }
+        }, AWTEvent.KEY_EVENT_MASK);
+    }
+    
+    private void addNavButtons(JToolBar toolBar) {
         JButton button = null;
+        ActionListener listener = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (e.getActionCommand().equals("previous")) {
+                    if (currentPage > 0) {
+                        if (pagesCombobox != null) {
+                            pagesCombobox.setSelectedIndex(currentPage - 1);
+                        }
+                    }
+                } else if (e.getActionCommand().equals("next")) {
+                    if (currentPage < document.getPageAmount() - 1) {
+                        pagesCombobox.setSelectedIndex(currentPage + 1);
+                    }
+                }
+            }
+        };
         
         button = makeNavigationButton("Back24", PREVIOUS,
                 "Previous page",
-                "Previous page");
+                "Previous page", listener, null);
         toolBar.add(button);
         
         button = makeNavigationButton("Forward24", NEXT,
                 "Next page",
-                "Next");
+                "Next", listener, null);
         toolBar.add(button);
     }
     
     private JButton makeNavigationButton(String imageName,
                                          String actionCommand,
                                          String toolTipText,
-                                         String altText) {
+                                         String altText,
+                                         ActionListener actionListener,
+                                         KeyListener keyListener) {
         String imgLocation = "images/" + imageName + ".gif";
         URL imageURL = getClass().getClassLoader().getResource(imgLocation);
         
@@ -307,22 +385,8 @@ public class DocumentViewer extends JPanel {
         buttonByCommandName.put(actionCommand, button);
         button.setActionCommand(actionCommand);
         button.setToolTipText(toolTipText);
-        button.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (actionCommand.equals("previous")) {
-                    if (currentPage > 0) {
-                        if (pagesCombobox != null) {
-                            pagesCombobox.setSelectedIndex(currentPage - 1);
-                        }
-                    }
-                } else if (actionCommand.equals("next")) {
-                    if (currentPage < document.getPageAmount() - 1) {
-                        pagesCombobox.setSelectedIndex(currentPage + 1);
-                    }
-                }
-            }
-        });
+        if (actionListener != null) button.addActionListener(actionListener);
+        if (keyListener != null) button.addKeyListener(keyListener);
         
         if (imageURL != null) {                      //image found
             button.setIcon(new ImageIcon(imageURL, altText));
@@ -482,18 +546,68 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
     }
     
+    private LinkedBlockingDeque historyPrevDeque = new LinkedBlockingDeque();
+    private LinkedBlockingDeque historyNextDeque = new LinkedBlockingDeque();
+    public void addNavigateHistory(boolean isPrev) {
+        Object[] hisState;
+        hisState = new Object[] {
+                currentPage,
+                imageScale,
+                imageScrollPane.getHorizontalScrollBar().getValue(),
+                imageScrollPane.getVerticalScrollBar().getValue()
+        };
+        if (isPrev) historyPrevDeque.offerFirst(hisState);
+        if (!isPrev) historyNextDeque.offerFirst(hisState);
+        buttonByCommandName.get(HIS_PREVIOUS).setEnabled(!historyPrevDeque.isEmpty());
+        buttonByCommandName.get(HIS_NEXT).setEnabled(!historyNextDeque.isEmpty());
+    }
+    
+    public void navigateHistory(boolean isPrev) {
+        Object[] hisState = null;
+        if (isPrev && historyPrevDeque.size() > 0) {
+            hisState = (Object[]) historyPrevDeque.pollFirst();
+            addNavigateHistory(false);
+        } else if (!isPrev && historyNextDeque.size() > 0) {
+            hisState = (Object[]) historyNextDeque.pollLast();
+            addNavigateHistory(true);
+        }
+        buttonByCommandName.get(HIS_PREVIOUS).setEnabled(!historyPrevDeque.isEmpty());
+        buttonByCommandName.get(HIS_NEXT).setEnabled(!historyNextDeque.isEmpty());
+        if (hisState != null) {
+            int page = (int) hisState[0];
+            float scale = (float) hisState[1];
+            int horiz = (int) hisState[2];
+            int vert = (int) hisState[3];
+            imageScrollPane.setVisible(false);
+            try {
+                if (scale != imageScale) {
+                    currentPage = page;
+                    setImageScale(scale);
+                } else {
+                    showPage(page);
+                }
+                imageScrollPane.getHorizontalScrollBar().setValue(horiz);
+                imageScrollPane.getVerticalScrollBar().setValue(vert);
+            } finally {
+                imageScrollPane.setVisible(true);                
+            }
+        }
+    }
+
     public void showPage(int page) {
         currentPage = page;
         Viewer viewer = pageViewer.get(page);
         Rectangle point = viewer.getWindowSize();
         imageScrollPane.getViewport().setViewPosition(new Point(0, point.y));
-        if (frame != null) {
-            frame.pack();
-        }
         if (buttonByCommandName.containsKey(PREVIOUS))
             buttonByCommandName.get(PREVIOUS).setEnabled(currentPage > 0);
         if (buttonByCommandName.containsKey(NEXT))
             buttonByCommandName.get(NEXT).setEnabled(currentPage < document.getPageAmount() - 1);
+        buttonByCommandName.get(HIS_PREVIOUS).setEnabled(!historyPrevDeque.isEmpty());
+        buttonByCommandName.get(HIS_NEXT).setEnabled(!historyNextDeque.isEmpty());
+        if (frame != null) {
+            frame.pack();
+        }
     }
     
     public float getImageScale() {
@@ -546,6 +660,7 @@ public class DocumentViewer extends JPanel {
         addTranslatedDelay(toolBar);
         addScalePage(toolBar);
         addNavPages(toolBar);
+        addNavHisPages(toolBar);
         
         for (Component c : toolBar.getComponents()) {
             c.setMaximumSize(new Dimension(c.getPreferredSize().width, 20));
@@ -556,21 +671,21 @@ public class DocumentViewer extends JPanel {
         if (!StringUtils.isBlank(pdfFilePath)) {
             historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale));
         }
-        
+    
         pdfFilePath = pdfFileName;
         currentPage = 0;
-        
+    
         pagesCombobox.setSelectedIndex(-1);
         pagesCombobox.removeAllItems();
         if (imageScrollPane != null) {
             imageScrollPane.setVisible(false);
             remove(imageScrollPane);
         }
-        
+    
         for (Component c : toolBar.getComponents()) {
             c.setEnabled(false);
         }
-        
+    
         HistoryStore.History selectedHistory = null;
         if (StringUtils.isBlank(pdfFilePath)) {
             Map<String, HistoryStore.History> his = new LinkedHashMap<>();
@@ -602,7 +717,7 @@ public class DocumentViewer extends JPanel {
             imageScale = selectedHistory.getScale().floatValue();
             scale.getEditor().setItem(imageScale * 100);
         }
-        
+    
         if (StringUtils.isBlank(pdfFilePath)) {
             openBookButton.setEnabled(true);
             frame.setTitle("");
@@ -610,17 +725,17 @@ public class DocumentViewer extends JPanel {
             return;
         }
         frame.setTitle(pdfFilePath);
-        
+    
         JPanel viewPanel = new JPanel();
         viewPanel.setLayout(new BoxLayout(viewPanel, BoxLayout.Y_AXIS));
-        
+    
         imageScrollPane = new JScrollPane(viewPanel);
         imageScrollPane.getVerticalScrollBar().setUnitIncrement(100);
         add(imageScrollPane, BorderLayout.CENTER);
         int w = Toolkit.getDefaultToolkit().getScreenSize().width;
         int h = Toolkit.getDefaultToolkit().getScreenSize().height;
         setPreferredSize(new Dimension(w, h));
-        
+    
         try {
             document = new DocumentImpl(pdfFilePath);
             pageViewer = new HashMap<>();
@@ -636,12 +751,10 @@ public class DocumentViewer extends JPanel {
             }
             pagesCombobox.addActionListener(al[0]);
             pagesCombobox.setSelectedIndex(currentPage);
-            showPage(currentPage);
-            setImageScale(imageScale);
-            
             for (Component c : toolBar.getComponents()) {
                 c.setEnabled(true);
             }
+            setImageScale(imageScale);
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             openBookButton.setEnabled(true);

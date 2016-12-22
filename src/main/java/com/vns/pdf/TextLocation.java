@@ -8,7 +8,7 @@ public interface TextLocation {
     
     List<TextArea> locate(int x1, int y1, int x2, int y2);
     
-    Collection<TextArea> getTextAreas();
+    Collection<? extends TextArea> getTextAreas();
     
     TextArea register(String text, int x, int y, int width, int height) throws InstantiationException, IllegalAccessException;
     

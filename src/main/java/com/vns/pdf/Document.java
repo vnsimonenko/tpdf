@@ -6,6 +6,8 @@ import java.io.IOException;
 public interface Document {
     TextLocation getTextLocation(int page);
     
+    TextLocation getAnnotationLocation(int page);
+    
     int getPageAmount();
     
     Image renderImage(int pageIndex, float scale) throws IOException;

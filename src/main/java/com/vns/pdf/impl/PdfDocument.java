@@ -18,10 +18,12 @@ package com.vns.pdf.impl;
 
 import com.sun.xml.internal.bind.marshaller.CharacterEscapeHandler;
 import com.vns.pdf.ApplicationProperties;
+import com.vns.pdf.domain.Annotation;
 import com.vns.pdf.domain.Doc;
 import com.vns.pdf.domain.Page;
 import com.vns.pdf.domain.Word;
 import java.awt.Image;
+import java.awt.geom.Rectangle2D;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -45,9 +47,17 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.apache.pdfbox.text.TextPosition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,8 +96,9 @@ class PdfDocument {
             
             this.doc = new Doc(new ArrayList<>());
             for (int i = 0; i < document.getNumberOfPages(); i++) {
-                PDRectangle box = document.getPage(i).getMediaBox();
-                this.doc.getPages().add(new Page(new ArrayList<>(), (int) box.getWidth(), (int) box.getHeight()));
+                PDPage pdPage = document.getPage(i);
+                PDRectangle box = pdPage.getMediaBox();
+                this.doc.getPages().add(new Page(new ArrayList<>(), new ArrayList<>(), (int) box.getWidth(), (int) box.getHeight()));
             }
             
             Writer dummy = new OutputStreamWriter(new ByteArrayOutputStream());
@@ -156,11 +167,56 @@ class PdfDocument {
         }
     }
     
+    private List<Annotation> parseAnnotation(PDPage pdPage) throws IOException {
+        List<Annotation> annotations = new ArrayList<>();
+        for (PDAnnotation annt : pdPage.getAnnotations()) {
+            if (annt instanceof PDAnnotationLink) {
+                PDAnnotationLink link = (PDAnnotationLink) annt;
+                PDRectangle rect = link.getRectangle();
+                float x = rect.getLowerLeftX();
+                float y = rect.getUpperRightY();
+                float width = rect.getWidth();
+                float height = rect.getHeight();
+                int rotation = pdPage.getRotation();
+                if (rotation == 0) {
+                    PDRectangle pageSize = pdPage.getMediaBox();
+                    y = pageSize.getHeight() - y;
+                } else if (rotation == 90) {
+                    //do nothing
+                }
+                
+                if (link.getAction() instanceof PDActionGoTo
+                            && ((PDActionGoTo) link.getAction()).getDestination() instanceof PDPageDestination) {
+                    float destZoom = -1;
+                    int destX = -1;
+                    int destY = -1;
+                    PDDestination dest = ((PDActionGoTo) link.getAction()).getDestination();
+                    if (dest instanceof PDPageXYZDestination) {
+                        PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
+                        destZoom = destXYZ.getZoom();
+                        destX = destXYZ.getLeft();
+                        destY = destXYZ.getTop();
+                    }
+                    int destPage = ((PDPageDestination) dest).retrievePageNumber();
+                    Annotation a = new Annotation(x, y, width, height, destX, destY, destPage, destZoom);
+                    annotations.add(a);
+                }
+            }
+        }
+        return annotations;
+    }
+    
     class CustomPDFTextStripper extends PDFTextStripper {
         private String patternCompile;
         
         public CustomPDFTextStripper() throws IOException {
             patternCompile = ApplicationProperties.KEY.PatternCompile.asString("([^ \\s\n\t.,:]+)");
+        }
+    
+        protected void endPage(PDPage pdPage) throws IOException {
+            Page page = doc.getPages().get(this.getCurrentPageNo() - 1);
+            List<Annotation> annotations = parseAnnotation(pdPage);
+            page.getAnnotations().addAll(annotations);
         }
         
         @Override

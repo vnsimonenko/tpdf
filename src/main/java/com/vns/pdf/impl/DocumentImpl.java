@@ -5,6 +5,7 @@ import com.vns.pdf.TextArea;
 import com.vns.pdf.TextLocation;
 import com.vns.pdf.Translator;
 import com.vns.pdf.Utils;
+import com.vns.pdf.domain.Annotation;
 import com.vns.pdf.domain.Page;
 import com.vns.pdf.domain.Word;
 import java.awt.Image;
@@ -16,13 +17,17 @@ import java.util.Set;
 
 public class DocumentImpl implements Document {
     private Map<Integer, TextLocation> textLocationByPage;
+    private Map<Integer, TextLocation> annotationLocationByPage;
     private Map<Integer, Set<TextArea>> textAreas;
+    private Map<Integer, Set<TextArea>> annotationAreas;
     private PdfDocument pdfDocument;
     
     public DocumentImpl(String pdfFileName) throws IllegalAccessException, InstantiationException, IOException {
         pdfDocument = PdfDocument.createDocument(pdfFileName);
         textLocationByPage = new HashMap<>();
+        annotationLocationByPage = new HashMap<>();
         textAreas = new HashMap<>();
+        annotationAreas = new HashMap<>();
         int pageNumber = 0;
         for (Page page : pdfDocument.getDoc().getPages()) {
             TextLocation textLocation = new TextLocationImpl();
@@ -31,6 +36,15 @@ public class DocumentImpl implements Document {
                 Utils.getMultiplicityValueFromMap(textAreas, pageNumber, HashSet::new).add(area);
             }
             textLocationByPage.put(pageNumber, textLocation);
+            TextLocation annotationLocation = new TextLocationImpl() {
+                
+            };
+            for (Annotation w : page.getAnnotations()) {
+                TextArea area = annotationLocation.register(null, w.getX(), w.getY(), w.getWidth(), w.getHeight());
+                area.setTag(w);
+                Utils.getMultiplicityValueFromMap(annotationAreas, pageNumber, HashSet::new).add(area);
+            }
+            annotationLocationByPage.put(pageNumber, annotationLocation);
             pageNumber++;
         }
     }
@@ -42,6 +56,11 @@ public class DocumentImpl implements Document {
     @Override
     public TextLocation getTextLocation(int page) {
         return textLocationByPage.get(page);
+    }
+    
+    @Override
+    public TextLocation getAnnotationLocation(int page) {
+        return annotationLocationByPage.get(page);
     }
     
     @Override

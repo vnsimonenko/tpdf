@@ -59,10 +59,10 @@ public class TextLocationImpl implements TextLocation {
     }
     
     @Override
-    public Collection<TextArea> getTextAreas() {
-        return textGrid.values().stream().map(textPointTextAreaMap -> textPointTextAreaMap.values()).flatMap(new Function<Collection<TextArea>, Stream<TextArea>>() {
+    public Collection<? extends TextArea> getTextAreas() {
+        return textGrid.values().stream().map(textPointTextAreaMap -> textPointTextAreaMap.values()).flatMap(new Function<Collection<? extends TextArea>, Stream<? extends TextArea>>() {
             @Override
-            public Stream<TextArea> apply(Collection<TextArea> textAreas) {
+            public Stream<? extends TextArea> apply(Collection<? extends TextArea> textAreas) {
                 return textAreas.stream();
             }
         }).collect(Collectors.toList());

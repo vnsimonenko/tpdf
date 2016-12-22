@@ -3,6 +3,7 @@ package com.vns.pdf.impl;
 import com.vns.pdf.TextArea;
 import com.vns.pdf.Translator;
 import com.vns.pdf.Viewer;
+import com.vns.pdf.domain.Annotation;
 import com.vns.pdf.gmodel.Dic;
 import com.vns.pdf.gmodel.Dics;
 import com.vns.pdf.gmodel.Entry;
@@ -16,6 +17,9 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -29,12 +33,14 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
+import javax.swing.text.View;
 import org.apache.commons.lang3.StringUtils;
 
 public class ImageViewer extends JPanel implements Viewer, Translator.TranslatorEvent {
@@ -97,7 +103,6 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         this.documentViewer = document;
         
         changeImageScale(document.getImageScale());
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         
         addMouseListener(new MouseClickedAdapter());
         addMouseMotionListener(new MouseMovedAdapter());
@@ -160,6 +165,11 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             if (getCursor().getType() == Cursor.MOVE_CURSOR) {
                 return;
             }
+    
+            g.setColor(Color.lightGray);
+            for (TextArea area : documentViewer.getDocument().getAnnotationLocation(pageNumber).getTextAreas()) {
+                drawLine(area.getXmin(), area.getYmax(), area.getXmax(), area.getYmax(), g);
+            }
 
 //            for (TextArea area : documentViewer.getDocument().getTextLocation(pageNumber).getTextAreas()) {
 //                drawRect(area.getXmin(), area.getYmin(), area.getXmax(), area.getYmax(), g);
@@ -204,6 +214,14 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
 //        yMax *= imageScale;
 //        g.drawRect((int) xMin, (int) yMin, (int) (xMax - xMin), (int) (yMax - yMin));
 //    }
+    
+    void drawLine(double xMin, double yMin, double xMax, double yMax, Graphics g) {
+        xMin *= imageScale;
+        yMin *= imageScale;
+        xMax *= imageScale;
+        yMax *= imageScale;
+        g.drawLine((int) xMin, (int) yMin, (int) xMax, (int) yMax);
+    }
     
     private void showPopupMenu(Collection<TextArea> areas) {
         String s = "";
@@ -345,12 +363,16 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             cursorY = e.getY();
             boolean reset = Math.abs(cursorX2 - cursorX) > 10 || Math.abs(cursorY2 - cursorY) > 10;
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
+            TextArea anntArea = documentViewer.getDocument().getAnnotationLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
             if (area == null) {
-                changeCursor(Cursor.getDefaultCursor().getType());
+                if (anntArea != null) changeCursor(Cursor.getDefaultCursor().getType());
                 if (reset) selectedTextScreenAreas.clear();
             } else {
                 changeCursor(Cursor.HAND_CURSOR);
                 selectedTextScreenAreas.clear();
+            }
+            if (anntArea != null) {
+                changeCursor(Cursor.HAND_CURSOR);
             }
             if (currentTextScreenArea == null || !currentTextScreenArea.equals(area)) {
                 currentTextScreenArea = area;
@@ -397,6 +419,27 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             cursorY = e.getY();
             cursorX1 = cursorX;
             cursorY1 = cursorY;
+            
+            TextArea annotation = documentViewer.getDocument().getAnnotationLocation(pageNumber)
+                                          .locate((int) (cursorX / imageScale), (int) (cursorY / imageScale));
+            if (annotation != null) {
+                currentTextScreenArea = null;
+                selectedTextScreenAreas.clear();
+                Annotation a = (Annotation) annotation.getTag();
+                changeCursor(Cursor.getDefaultCursor().getType());
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        documentViewer.addNavigateHistory(true);
+                        documentViewer.showPage(a.getDestPage());
+                        float y = imageHeight * imageScale - a.getDestY() * imageScale;
+                        documentViewer.scroll(a.getDestX() * imageScale, y);
+                        Viewer w = documentViewer.getViewer(a.getDestPage());
+                        ((JComponent)w).setCursor(Cursor.getDefaultCursor());
+                    }
+                });
+                return;
+            }
             
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (cursorX / imageScale), (int) (cursorY / imageScale));
             currentTextScreenArea = area;

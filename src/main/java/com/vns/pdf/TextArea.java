@@ -6,6 +6,7 @@ public class TextArea {
     private TextPoint leftTop;
     private TextPoint rightBottom;
     private String text;
+    private Object tag;
     
     public TextArea(String text, TextPoint leftTop, TextPoint rightBottom) {
         this.leftTop = leftTop;
@@ -45,6 +46,14 @@ public class TextArea {
     
     public String getText() {
         return text;
+    }
+    
+    public Object getTag() {
+        return tag;
+    }
+    
+    public void setTag(Object tag) {
+        this.tag = tag;
     }
     
     @Override
