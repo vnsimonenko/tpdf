@@ -803,14 +803,16 @@ public class DocumentViewer extends JPanel {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     final Annotation a = (Annotation) ta.getTag();
-                    SwingUtilities.invokeLater(() -> {
-                        showPage(a.getDestPage());
-                        float imageHeight = getDocument().getHeight(currentPage);
-                        float y = imageHeight * imageScale - a.getDestY() * imageScale;
-                        scroll(a.getDestX() * imageScale, y);
-                        Viewer w = getViewer(a.getDestPage());
-                        ((JComponent) w).setCursor(Cursor.getDefaultCursor());
-                    });
+                    if (a != null) {
+                        SwingUtilities.invokeLater(() -> {
+                            showPage(a.getDestPage());
+                            float imageHeight = getDocument().getHeight(currentPage);
+                            float y = imageHeight * imageScale - a.getDestY() * imageScale;
+                            scroll(a.getDestX() * imageScale, y);
+                            Viewer w = getViewer(a.getDestPage());
+                            ((JComponent) w).setCursor(Cursor.getDefaultCursor());
+                        });
+                    }
                 }
             });
             viewPanel.add(f);

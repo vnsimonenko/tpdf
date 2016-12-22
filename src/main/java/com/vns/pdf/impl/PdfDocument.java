@@ -53,6 +53,7 @@ import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDNamedDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
@@ -182,6 +183,9 @@ class PdfDocument {
         PDOutlineItem current = bookmark.getFirstChild();
         while (current != null) {
             ActionData actionData = parsePDAction(current.getAction());
+            if (actionData == null) {
+                actionData = parsePDDestination(current.getDestination());
+            }
             Annotation annotation;
             if (actionData != null) {
                 annotation = new Annotation(-1, -1, -1, -1,
@@ -189,7 +193,7 @@ class PdfDocument {
                                                    actionData.destPage,
                                                    actionData.destZoom, indentation + current.getTitle());
             } else {
-                annotation = new Annotation(current.getTitle());
+                annotation = new Annotation(indentation + current.getTitle());
             }
             this.doc.getBookmarks().add(annotation);
             fillBookmark(current, indentation + "    ");
@@ -229,12 +233,23 @@ class PdfDocument {
     }
     
     private ActionData parsePDAction(PDAction action) throws IOException {
+        PDDestination dest = null;
         if (action instanceof PDActionGoTo
                     && ((PDActionGoTo) action).getDestination() instanceof PDPageDestination) {
+            dest = ((PDActionGoTo) action).getDestination();
+        }
+        if (action instanceof PDActionGoTo
+                    && ((PDActionGoTo) action).getDestination() instanceof PDNamedDestination) {
+            PDNamedDestination nameDest = (PDNamedDestination) ((PDActionGoTo) action).getDestination();
+            dest = document.getDocumentCatalog().findNamedDestinationPage(nameDest);
+        }
+        return parsePDDestination(dest);
+    }
+    private ActionData parsePDDestination(PDDestination dest) throws IOException {
+        if (dest != null) {
             float destZoom = -1;
             int destX = -1;
             int destY = -1;
-            PDDestination dest = ((PDActionGoTo) action).getDestination();
             if (dest instanceof PDPageXYZDestination) {
                 PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
                 destZoom = destXYZ.getZoom();
