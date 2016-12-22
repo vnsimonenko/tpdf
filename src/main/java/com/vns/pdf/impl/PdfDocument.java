@@ -48,12 +48,16 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
@@ -71,6 +75,7 @@ class PdfDocument {
     private PDFTextStripper pdfTextStripper;
     private PDDocument document;
     private PDFRenderer pdfRenderer;
+    private List<Annotation> bookmarks;
     
     private PdfDocument(String pdfFileName) throws IOException {
         this.pdfFileName = pdfFileName;
@@ -92,7 +97,7 @@ class PdfDocument {
             pdfTextStripper.setStartPage(0);
             pdfTextStripper.setEndPage(document.getNumberOfPages());
             
-            this.doc = new Doc(new ArrayList<>());
+            this.doc = new Doc(new ArrayList<>(), new ArrayList<>());
             for (int i = 0; i < document.getNumberOfPages(); i++) {
                 PDPage pdPage = document.getPage(i);
                 PDRectangle box = pdPage.getMediaBox();
@@ -101,6 +106,7 @@ class PdfDocument {
             
             Writer dummy = new OutputStreamWriter(new ByteArrayOutputStream());
             pdfTextStripper.writeText(document, dummy);
+            parseBookmarksAnnotation();
             createTextAreaFile();
         } else {
             loadTextAreaFile();
@@ -165,6 +171,32 @@ class PdfDocument {
         }
     }
     
+    private void parseBookmarksAnnotation() throws IOException {
+        PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
+        if (outline != null) {
+            fillBookmark(outline, "");
+        }
+    }
+    
+    public void fillBookmark(PDOutlineNode bookmark, String indentation) throws IOException {
+        PDOutlineItem current = bookmark.getFirstChild();
+        while (current != null) {
+            ActionData actionData = parsePDAction(current.getAction());
+            Annotation annotation;
+            if (actionData != null) {
+                annotation = new Annotation(-1, -1, -1, -1,
+                                                   actionData.destX, actionData.destY,
+                                                   actionData.destPage,
+                                                   actionData.destZoom, indentation + current.getTitle());
+            } else {
+                annotation = new Annotation(current.getTitle());
+            }
+            this.doc.getBookmarks().add(annotation);
+            fillBookmark(current, indentation + "    ");
+            current = current.getNextSibling();
+        }
+    }
+    
     private List<Annotation> parseAnnotation(PDPage pdPage) throws IOException {
         List<Annotation> annotations = new ArrayList<>();
         for (PDAnnotation annt : pdPage.getAnnotations()) {
@@ -183,25 +215,50 @@ class PdfDocument {
                     //do nothing
                 }
                 
-                if (link.getAction() instanceof PDActionGoTo
-                            && ((PDActionGoTo) link.getAction()).getDestination() instanceof PDPageDestination) {
-                    float destZoom = -1;
-                    int destX = -1;
-                    int destY = -1;
-                    PDDestination dest = ((PDActionGoTo) link.getAction()).getDestination();
-                    if (dest instanceof PDPageXYZDestination) {
-                        PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
-                        destZoom = destXYZ.getZoom();
-                        destX = destXYZ.getLeft();
-                        destY = destXYZ.getTop();
-                    }
-                    int destPage = ((PDPageDestination) dest).retrievePageNumber();
-                    Annotation a = new Annotation(x, y, width, height, destX, destY, destPage, destZoom);
+                ActionData actionData = parsePDAction(link.getAction());
+                if (actionData != null) {
+                    Annotation a = new Annotation(x, y, width, height,
+                                                         actionData.destX, actionData.destY,
+                                                         actionData.destPage,
+                                                         actionData.destZoom);
                     annotations.add(a);
                 }
             }
         }
         return annotations;
+    }
+    
+    private ActionData parsePDAction(PDAction action) throws IOException {
+        if (action instanceof PDActionGoTo
+                    && ((PDActionGoTo) action).getDestination() instanceof PDPageDestination) {
+            float destZoom = -1;
+            int destX = -1;
+            int destY = -1;
+            PDDestination dest = ((PDActionGoTo) action).getDestination();
+            if (dest instanceof PDPageXYZDestination) {
+                PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
+                destZoom = destXYZ.getZoom();
+                destX = destXYZ.getLeft();
+                destY = destXYZ.getTop();
+            }
+            int destPage = ((PDPageDestination) dest).retrievePageNumber();
+            return new ActionData(destX, destY, destPage, destZoom);
+        }
+        return null;
+    }
+    
+    class ActionData {
+        final float destX;
+        final float destY;
+        final int destPage;
+        final float destZoom;
+        
+        public ActionData(float destX, float destY, int destPage, float destZoom) {
+            this.destX = destX;
+            this.destY = destY;
+            this.destPage = destPage;
+            this.destZoom = destZoom;
+        }
     }
     
     class CustomPDFTextStripper extends PDFTextStripper {

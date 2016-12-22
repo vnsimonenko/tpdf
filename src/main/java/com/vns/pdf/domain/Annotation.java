@@ -2,6 +2,7 @@ package com.vns.pdf.domain;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlValue;
 
 @XmlRootElement(name = "annotation")
 public class Annotation {
@@ -22,12 +23,14 @@ public class Annotation {
     private int destPage;
     @XmlAttribute
     private float destZoom;
+    @XmlValue
+    private String text;
     
     public Annotation() {
     }
     
-    public Annotation(float x, float y, float width, float height, float destX, float destY, int destPage, float
-                                                                                                                   destZoom) {
+    public Annotation(float x, float y, float width, float height, float destX, float destY,
+                      int destPage, float destZoom, String text) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -36,6 +39,15 @@ public class Annotation {
         this.destY = destY;
         this.destPage = destPage;
         this.destZoom = destZoom;
+        this.text = text;
+    }
+    
+    public Annotation(float x, float y, float width, float height, float destX, float destY, int destPage, float destZoom) {
+        this(x, y, width, height, destX, destY, destPage, destZoom, null);
+    }
+    
+    public Annotation(String text) {
+        this(-1, -1, -1, -1, -1, -1, -1, -1, text);
     }
     
     public float getX() {
@@ -68,5 +80,9 @@ public class Annotation {
     
     public float getDestZoom() {
         return destZoom;
+    }
+    
+    public String getText() {
+        return text;
     }
 }

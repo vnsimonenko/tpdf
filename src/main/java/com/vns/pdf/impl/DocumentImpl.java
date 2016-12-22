@@ -10,10 +10,13 @@ import com.vns.pdf.domain.Page;
 import com.vns.pdf.domain.Word;
 import java.awt.Image;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 
 public class DocumentImpl implements Document {
     private Map<Integer, TextLocation> textLocationByPage;
@@ -21,6 +24,7 @@ public class DocumentImpl implements Document {
     private Map<Integer, Set<TextArea>> textAreas;
     private Map<Integer, Set<TextArea>> annotationAreas;
     private PdfDocument pdfDocument;
+    private List<TextArea> bookmarks;
     
     public DocumentImpl(String pdfFileName) throws IllegalAccessException, InstantiationException, IOException {
         pdfDocument = PdfDocument.createDocument(pdfFileName);
@@ -36,9 +40,7 @@ public class DocumentImpl implements Document {
                 Utils.getMultiplicityValueFromMap(textAreas, pageNumber, HashSet::new).add(area);
             }
             textLocationByPage.put(pageNumber, textLocation);
-            TextLocation annotationLocation = new TextLocationImpl() {
-                
-            };
+            TextLocation annotationLocation = new TextLocationImpl();
             for (Annotation w : page.getAnnotations()) {
                 TextArea area = annotationLocation.register(null, w.getX(), w.getY(), w.getWidth(), w.getHeight());
                 area.setTag(w);
@@ -46,6 +48,12 @@ public class DocumentImpl implements Document {
             }
             annotationLocationByPage.put(pageNumber, annotationLocation);
             pageNumber++;
+        }
+        bookmarks = new ArrayList<>();
+        for (Annotation w : pdfDocument.getDoc().getBookmarks()) {
+            TextArea area = new TextArea(StringUtils.isBlank(w.getText()) ? "" : w.getText().replaceAll("[\n]", ""));
+            area.setTag(w);
+            bookmarks.add(area);
         }
     }
     
@@ -61,6 +69,11 @@ public class DocumentImpl implements Document {
     @Override
     public TextLocation getAnnotationLocation(int page) {
         return annotationLocationByPage.get(page);
+    }
+    
+    @Override
+    public List<TextArea> getBookmarks() {
+        return bookmarks;
     }
     
     @Override

@@ -363,6 +363,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             if (area == null) {
                 if (anntArea != null) changeCursor(Cursor.getDefaultCursor().getType());
                 if (reset) selectedTextScreenAreas.clear();
+                changeCursor(Cursor.DEFAULT_CURSOR);
             } else {
                 changeCursor(Cursor.HAND_CURSOR);
                 selectedTextScreenAreas.clear();

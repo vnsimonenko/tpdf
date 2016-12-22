@@ -3,7 +3,9 @@ package com.vns.pdf.impl;
 import com.vns.pdf.ApplicationProperties;
 import com.vns.pdf.Document;
 import com.vns.pdf.Language;
+import com.vns.pdf.TextArea;
 import com.vns.pdf.Viewer;
+import com.vns.pdf.domain.Annotation;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -20,6 +22,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -43,6 +47,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
@@ -96,6 +101,8 @@ public class DocumentViewer extends JPanel {
     private JComboBox<Integer> scale;
     private LinkedBlockingDeque historyPrevDeque = new LinkedBlockingDeque();
     private LinkedBlockingDeque historyNextDeque = new LinkedBlockingDeque();
+    private JPanel contentPane;
+    private JPanel workingPane;
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -120,6 +127,7 @@ public class DocumentViewer extends JPanel {
         DocumentViewer documentViewer = new DocumentViewer(frame);
         documentViewer.createToolBar();
         frame.add(documentViewer);
+        documentViewer.createViewArea();
         documentViewer.open(pdfFileName);
         frame.pack();
         frame.setVisible(true);
@@ -167,6 +175,20 @@ public class DocumentViewer extends JPanel {
                 logger.error(e.getMessage(), e);
             }
         });
+    }
+    
+    private void createViewArea() {
+        JSplitPane workingSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        contentPane = new JPanel();
+        contentPane.setLayout(new BorderLayout());
+        workingPane = new JPanel();
+        workingPane.setLayout(new BorderLayout());
+        
+        workingSplitPane.setTopComponent(contentPane);
+        workingSplitPane.setBottomComponent(workingPane);
+        add(workingSplitPane, BorderLayout.CENTER);
+        //frame.setSize(150, 150);
+        workingSplitPane.setDividerLocation(0.5);
     }
     
     public boolean isLock() {
@@ -331,7 +353,7 @@ public class DocumentViewer extends JPanel {
         kit.addAWTEventListener(event -> {
             if (event instanceof KeyEvent) {
                 KeyEvent e = (KeyEvent) event;
-                if (e.getID() == KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_Z || e.getKeyCode() == KeyEvent.VK_X) {
+                if (e.getID() == KEY_PRESSED && (e.getKeyCode() == KeyEvent.VK_Z || e.getKeyCode() == KeyEvent.VK_X)) {
                     pagesCombobox.setEditable(false);
                     try {
                         navigateHistory(e.getKeyCode() == KeyEvent.VK_Z);
@@ -731,7 +753,8 @@ public class DocumentViewer extends JPanel {
         if (imageScrollPane != null) remove(imageScrollPane);
         imageScrollPane = new JScrollPane(viewPanel);
         imageScrollPane.getVerticalScrollBar().setUnitIncrement(100);
-        add(imageScrollPane, BorderLayout.CENTER);
+        workingPane.removeAll();
+        workingPane.add(imageScrollPane, BorderLayout.CENTER);
         int w = Toolkit.getDefaultToolkit().getScreenSize().width;
         int h = Toolkit.getDefaultToolkit().getScreenSize().height;
         setPreferredSize(new Dimension(w, h));
@@ -755,9 +778,42 @@ public class DocumentViewer extends JPanel {
                 c.setEnabled(true);
             }
             setImageScale(imageScale);
+            
+            fillContent();
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             openBookButton.setEnabled(true);
+        }
+    }
+    
+    private void fillContent() {
+        contentPane.removeAll();
+        contentPane.setLayout(new BorderLayout());
+        JPanel viewPanel = new JPanel();
+        viewPanel.setLayout(new BoxLayout(viewPanel, BoxLayout.Y_AXIS));
+        
+        JScrollPane imageScrollPane = new JScrollPane(viewPanel);
+        imageScrollPane.getVerticalScrollBar().setUnitIncrement(100);
+        contentPane.add(imageScrollPane, BorderLayout.CENTER);
+        for (TextArea ta : document.getBookmarks()) {
+            JLabel f = new JLabel();
+            f.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            f.setText(ta.getText());
+            f.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    final Annotation a = (Annotation) ta.getTag();
+                    SwingUtilities.invokeLater(() -> {
+                        showPage(a.getDestPage());
+                        float imageHeight = getDocument().getHeight(currentPage);
+                        float y = imageHeight * imageScale - a.getDestY() * imageScale;
+                        scroll(a.getDestX() * imageScale, y);
+                        Viewer w = getViewer(a.getDestPage());
+                        ((JComponent) w).setCursor(Cursor.getDefaultCursor());
+                    });
+                }
+            });
+            viewPanel.add(f);
         }
     }
     

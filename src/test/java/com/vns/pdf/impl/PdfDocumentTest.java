@@ -19,7 +19,8 @@ public class PdfDocumentTest {
     
     @Test
     public void testParse() throws IOException {
-        PdfDocument document = PdfDocument.createDocument("../JAAS Reference Guide.pdf");
+        //PdfDocument document = PdfDocument.createDocument("../JAAS Reference Guide.pdf");
+        PdfDocument document = PdfDocument.createDocument("docs/jls8.pdf");
         Doc doc = document.getDoc();
         
         out.println(doc);

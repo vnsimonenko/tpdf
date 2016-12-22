@@ -8,6 +8,10 @@ public class TextArea {
     private String text;
     private Object tag;
     
+    public TextArea(String text) {
+        this.text = StringUtils.defaultString(text, "");
+    }
+    
     public TextArea(String text, TextPoint leftTop, TextPoint rightBottom) {
         this.leftTop = leftTop;
         this.rightBottom = rightBottom;

@@ -2,11 +2,14 @@ package com.vns.pdf;
 
 import java.awt.Image;
 import java.io.IOException;
+import java.util.List;
 
 public interface Document {
     TextLocation getTextLocation(int page);
     
     TextLocation getAnnotationLocation(int page);
+    
+    List<TextArea> getBookmarks();
     
     int getPageAmount();
     

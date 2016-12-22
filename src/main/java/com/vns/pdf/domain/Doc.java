@@ -8,16 +8,23 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class Doc {
     @XmlElement(name = "page")
     private List<Page> pages;
+    @XmlElement(name = "bookmarks")
+    private List<Annotation> bookmarks;
     
     public Doc() {
     }
     
-    public Doc(List<Page> pages) {
+    public Doc(List<Page> pages, List<Annotation> bookmarks) {
         this.pages = pages;
+        this.bookmarks = bookmarks;
     }
     
     
     public List<Page> getPages() {
         return pages;
+    }
+    
+    public List<Annotation> getBookmarks() {
+        return bookmarks;
     }
 }
