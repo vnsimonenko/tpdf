@@ -257,7 +257,7 @@ class PdfDocument {
                 destY = destXYZ.getTop();
             }
             int destPage = ((PDPageDestination) dest).retrievePageNumber();
-            return new ActionData(destX, destY, destPage, destZoom);
+            return destPage < 0 ? null : new ActionData(destX, destY, destPage, destZoom);
         }
         return null;
     }
