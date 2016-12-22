@@ -501,7 +501,7 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
         trgLanguage.setFocusable(false);
     }
-
+    
     private void addOpenFile(JToolBar toolBar) {
         String imgLocation = "images/book.png";
         URL imageURL = getClass().getClassLoader().getResource(imgLocation);
@@ -728,6 +728,7 @@ public class DocumentViewer extends JPanel {
         JPanel viewPanel = new JPanel();
         viewPanel.setLayout(new BoxLayout(viewPanel, BoxLayout.Y_AXIS));
         
+        if (imageScrollPane != null) remove(imageScrollPane);
         imageScrollPane = new JScrollPane(viewPanel);
         imageScrollPane.getVerticalScrollBar().setUnitIncrement(100);
         add(imageScrollPane, BorderLayout.CENTER);
