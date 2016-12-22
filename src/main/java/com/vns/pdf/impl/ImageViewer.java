@@ -17,9 +17,6 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -40,7 +37,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import javax.swing.text.View;
 import org.apache.commons.lang3.StringUtils;
 
 public class ImageViewer extends JPanel implements Viewer, Translator.TranslatorEvent {
@@ -165,7 +161,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             if (getCursor().getType() == Cursor.MOVE_CURSOR) {
                 return;
             }
-    
+            
             g.setColor(Color.lightGray);
             for (TextArea area : documentViewer.getDocument().getAnnotationLocation(pageNumber).getTextAreas()) {
                 drawLine(area.getXmin(), area.getYmax(), area.getXmax(), area.getYmax(), g);
@@ -435,7 +431,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
                         float y = imageHeight * imageScale - a.getDestY() * imageScale;
                         documentViewer.scroll(a.getDestX() * imageScale, y);
                         Viewer w = documentViewer.getViewer(a.getDestPage());
-                        ((JComponent)w).setCursor(Cursor.getDefaultCursor());
+                        ((JComponent) w).setCursor(Cursor.getDefaultCursor());
                     }
                 });
                 return;

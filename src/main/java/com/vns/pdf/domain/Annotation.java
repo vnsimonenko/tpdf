@@ -26,8 +26,8 @@ public class Annotation {
     public Annotation() {
     }
     
-    public Annotation(float x, float y, float width, float height, float destX, float destY, int destPage, float 
-                                                                                                                 destZoom) {
+    public Annotation(float x, float y, float width, float height, float destX, float destY, int destPage, float
+                                                                                                                   destZoom) {
         this.x = x;
         this.y = y;
         this.width = width;

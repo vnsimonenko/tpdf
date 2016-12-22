@@ -23,7 +23,6 @@ import com.vns.pdf.domain.Doc;
 import com.vns.pdf.domain.Page;
 import com.vns.pdf.domain.Word;
 import java.awt.Image;
-import java.awt.geom.Rectangle2D;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +56,6 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPa
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.apache.pdfbox.text.TextPosition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -212,7 +210,7 @@ class PdfDocument {
         public CustomPDFTextStripper() throws IOException {
             patternCompile = ApplicationProperties.KEY.PatternCompile.asString("([^ \\s\n\t.,:]+)");
         }
-    
+        
         protected void endPage(PDPage pdPage) throws IOException {
             Page page = doc.getPages().get(this.getCurrentPageNo() - 1);
             List<Annotation> annotations = parseAnnotation(pdPage);

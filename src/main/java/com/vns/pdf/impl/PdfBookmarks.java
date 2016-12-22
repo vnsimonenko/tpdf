@@ -8,52 +8,38 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlin
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
 
 public class PdfBookmarks {
-    public static void main( String[] args ) throws IOException
-    {
-        args = new String[] {"docs/jls8.pdf"};
-        if( args.length != 1 )
-        {
+    public static void main(String[] args) throws IOException {
+        args = new String[]{"docs/jls8.pdf"};
+        if (args.length != 1) {
             usage();
-        }
-        else
-        {
+        } else {
             PDDocument document = null;
-            try
-            {
-                document = PDDocument.load( new File(args[0]) );
+            try {
+                document = PDDocument.load(new File(args[0]));
                 PdfBookmarks meta = new PdfBookmarks();
-                PDDocumentOutline outline =  document.getDocumentCatalog().getDocumentOutline();
-                if( outline != null )
-                {
-                    meta.printBookmark( outline, "" );
+                PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
+                if (outline != null) {
+                    meta.printBookmark(outline, "");
+                } else {
+                    System.out.println("This document does not contain any bookmarks");
                 }
-                else
-                {
-                    System.out.println( "This document does not contain any bookmarks" );
-                }
-            }
-            finally
-            {
-                if( document != null )
-                {
+            } finally {
+                if (document != null) {
                     document.close();
                 }
             }
         }
     }
     
-    private static void usage()
-    {
-        System.err.println( "Usage: java " + PdfBookmarks.class.getName() + " <input-pdf>" );
+    private static void usage() {
+        System.err.println("Usage: java " + PdfBookmarks.class.getName() + " <input-pdf>");
     }
     
-    public void printBookmark( PDOutlineNode bookmark, String indentation ) throws IOException
-    {
+    public void printBookmark(PDOutlineNode bookmark, String indentation) throws IOException {
         PDOutlineItem current = bookmark.getFirstChild();
-        while( current != null )
-        {
-            System.out.println( indentation + current.getTitle() );
-            printBookmark( current, indentation + "    " );
+        while (current != null) {
+            System.out.println(indentation + current.getTitle());
+            printBookmark(current, indentation + "    ");
             current = current.getNextSibling();
         }
         

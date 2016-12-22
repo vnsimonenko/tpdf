@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -95,6 +94,8 @@ public class DocumentViewer extends JPanel {
     private volatile boolean lock;
     private String pdfFilePath;
     private JComboBox<Integer> scale;
+    private LinkedBlockingDeque historyPrevDeque = new LinkedBlockingDeque();
+    private LinkedBlockingDeque historyNextDeque = new LinkedBlockingDeque();
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -224,7 +225,7 @@ public class DocumentViewer extends JPanel {
     
     public Viewer getViewer(int page) {
         return pageViewer.get(page);
-    } 
+    }
     
     private void addScalePage(JToolBar toolBar) {
         scale = new JComboBox<>(new Integer[]{25, 50, 75, 100, 125, 150, 175, 200});
@@ -308,13 +309,13 @@ public class DocumentViewer extends JPanel {
         
         ActionListener listener = e -> {
             if (e.getActionCommand().equals(HIS_PREVIOUS)) {
-                    navigateHistory(true);
+                navigateHistory(true);
                 pagesCombobox.setEditable(true);
             } else if (e.getActionCommand().equals(HIS_NEXT)) {
                 navigateHistory(false);
             }
         };
-    
+        
         JButton button = makeNavigationButton("Back24", HIS_PREVIOUS,
                 "Previous history",
                 "Previous history", listener, null);
@@ -323,15 +324,15 @@ public class DocumentViewer extends JPanel {
         button = makeNavigationButton("Forward24", HIS_NEXT,
                 "Next history",
                 "Next history", listener, null);
-        button.setEnabled(false);        
+        button.setEnabled(false);
         toolBar.add(button);
-    
+        
         Toolkit kit = Toolkit.getDefaultToolkit();
         kit.addAWTEventListener(event -> {
             if (event instanceof KeyEvent) {
                 KeyEvent e = (KeyEvent) event;
                 if (e.getID() == KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_Z || e.getKeyCode() == KeyEvent.VK_X) {
-                    pagesCombobox.setEditable(false);                    
+                    pagesCombobox.setEditable(false);
                     try {
                         navigateHistory(e.getKeyCode() == KeyEvent.VK_Z);
                     } finally {
@@ -500,7 +501,7 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
         trgLanguage.setFocusable(false);
     }
-    
+
     private void addOpenFile(JToolBar toolBar) {
         String imgLocation = "images/book.png";
         URL imageURL = getClass().getClassLoader().getResource(imgLocation);
@@ -546,11 +547,9 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
     }
     
-    private LinkedBlockingDeque historyPrevDeque = new LinkedBlockingDeque();
-    private LinkedBlockingDeque historyNextDeque = new LinkedBlockingDeque();
     public void addNavigateHistory(boolean isPrev) {
         Object[] hisState;
-        hisState = new Object[] {
+        hisState = new Object[]{
                 currentPage,
                 imageScale,
                 imageScrollPane.getHorizontalScrollBar().getValue(),
@@ -589,11 +588,11 @@ public class DocumentViewer extends JPanel {
                 imageScrollPane.getHorizontalScrollBar().setValue(horiz);
                 imageScrollPane.getVerticalScrollBar().setValue(vert);
             } finally {
-                imageScrollPane.setVisible(true);                
+                imageScrollPane.setVisible(true);
             }
         }
     }
-
+    
     public void showPage(int page) {
         currentPage = page;
         Viewer viewer = pageViewer.get(page);
@@ -671,21 +670,21 @@ public class DocumentViewer extends JPanel {
         if (!StringUtils.isBlank(pdfFilePath)) {
             historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale));
         }
-    
+        
         pdfFilePath = pdfFileName;
         currentPage = 0;
-    
+        
         pagesCombobox.setSelectedIndex(-1);
         pagesCombobox.removeAllItems();
         if (imageScrollPane != null) {
             imageScrollPane.setVisible(false);
             remove(imageScrollPane);
         }
-    
+        
         for (Component c : toolBar.getComponents()) {
             c.setEnabled(false);
         }
-    
+        
         HistoryStore.History selectedHistory = null;
         if (StringUtils.isBlank(pdfFilePath)) {
             Map<String, HistoryStore.History> his = new LinkedHashMap<>();
@@ -717,7 +716,7 @@ public class DocumentViewer extends JPanel {
             imageScale = selectedHistory.getScale().floatValue();
             scale.getEditor().setItem(imageScale * 100);
         }
-    
+        
         if (StringUtils.isBlank(pdfFilePath)) {
             openBookButton.setEnabled(true);
             frame.setTitle("");
@@ -725,17 +724,17 @@ public class DocumentViewer extends JPanel {
             return;
         }
         frame.setTitle(pdfFilePath);
-    
+        
         JPanel viewPanel = new JPanel();
         viewPanel.setLayout(new BoxLayout(viewPanel, BoxLayout.Y_AXIS));
-    
+        
         imageScrollPane = new JScrollPane(viewPanel);
         imageScrollPane.getVerticalScrollBar().setUnitIncrement(100);
         add(imageScrollPane, BorderLayout.CENTER);
         int w = Toolkit.getDefaultToolkit().getScreenSize().width;
         int h = Toolkit.getDefaultToolkit().getScreenSize().height;
         setPreferredSize(new Dimension(w, h));
-    
+        
         try {
             document = new DocumentImpl(pdfFilePath);
             pageViewer = new HashMap<>();

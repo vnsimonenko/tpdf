@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class Page {
     @XmlElement(name = "word")
     private List<Word> words;
-
+    
     @XmlElement(name = "annotation")
     private List<Annotation> annotations;
     
