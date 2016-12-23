@@ -4,6 +4,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.gson.GsonFactory;
 import com.vns.pdf.ApplicationProperties;
+import com.vns.pdf.Language;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -47,12 +48,13 @@ public class HistoryStore {
      *
      * @param filePath, page, scale
      */
-    public void save(String filePath, int page, BigDecimal scale) throws IOException {
+    public void save(String filePath, int page, BigDecimal scale, Integer delay, Language from, Language to,
+                     Integer rows) throws IOException {
         if (StringUtils.isBlank(filePath)) {
             return;
         }
         String fileName = Paths.get(filePath + ".json").getFileName().toString();
-        History history = new History(filePath, page, scale);
+        History history = new History(filePath, page, scale, delay, from, to, rows);
         byte[] historyBytes = jsonFactory.toPrettyString(history).getBytes("utf-8");
         Path target = Paths.get(historyDir.toAbsolutePath().toString(), fileName);
         Files.copy(new ByteArrayInputStream(historyBytes), target, StandardCopyOption.REPLACE_EXISTING);
@@ -95,15 +97,28 @@ public class HistoryStore {
         private Integer page;
         @com.google.api.client.util.Key("scale")
         private BigDecimal scale;
+        @com.google.api.client.util.Key("delay")
+        private Integer delay;
+        @com.google.api.client.util.Key("from")
+        private Language from;
+        @com.google.api.client.util.Key("to")
+        private Language to;
+        @com.google.api.client.util.Key("rows")
+        private Integer rows;
         private long version;
         
         public History() {
         }
         
-        public History(String fileName, Integer page, BigDecimal scale) {
+        public History(String fileName, Integer page, BigDecimal scale, Integer delay, Language from, Language to,
+                       Integer rows) {
             this.filePath = fileName;
             this.page = page;
             this.scale = scale;
+            this.delay = delay;
+            this.from = from;
+            this.to = to;
+            this.rows = rows;
         }
         
         public String getFilePath() {
@@ -118,12 +133,36 @@ public class HistoryStore {
             return scale;
         }
         
+        public Integer getDelay() {
+            return delay;
+        }
+        
+        public Language getFrom() {
+            return from;
+        }
+        
+        public Language getTo() {
+            return to;
+        }
+        
+        public Integer getRows() {
+            return rows;
+        }
+        
+        public long getVersion() {
+            return version;
+        }
+        
         @Override
         public String toString() {
             return "History{" +
                            "filePath='" + filePath + '\'' +
                            ", page=" + page +
                            ", scale=" + scale +
+                           ", delay=" + delay +
+                           ", from=" + from +
+                           ", to=" + to +
+                           ", rows=" + rows +
                            ", version=" + version +
                            '}';
         }

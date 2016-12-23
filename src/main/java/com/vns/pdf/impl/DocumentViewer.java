@@ -38,6 +38,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -114,7 +115,11 @@ public class DocumentViewer extends JPanel {
         
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale));
+                Language srcLng = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
+                Language trgLng = srcLanguage.getItemAt(trgLanguage.getSelectedIndex());
+                Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
+                historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
+                        getTranslatedDelay(), srcLng, trgLng, rows);
                 if (document != null) document.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -488,17 +493,14 @@ public class DocumentViewer extends JPanel {
     }
     
     private void addLanguage(JToolBar toolBar) {
-        srcLanguage = new JComboBox<Language>(Language.values());
+        srcLanguage = new JComboBox<>(Language.values());
         Language lng = Language.valueOf(ApplicationProperties.KEY.SrcLang.asString().toUpperCase());
         srcLanguage.setSelectedIndex(lng.ordinal());
         srcLanguage.setEditable(false);
-        srcLanguage.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (e.getActionCommand() == "comboBoxChanged") {
-                    Language lng = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
-                    getDocument().getTranslator().setSrc(lng);
-                }
+        srcLanguage.addActionListener(e -> {
+            if (e.getActionCommand() == "comboBoxChanged") {
+                Language lng1 = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
+                getDocument().getTranslator().setSrc(lng1);
             }
         });
         srcLanguage.setMaximumSize(new Dimension(100, 100));
@@ -507,17 +509,14 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
         srcLanguage.setFocusable(false);
         
-        trgLanguage = new JComboBox<Language>(Language.values());
+        trgLanguage = new JComboBox<>(Language.values());
         lng = Language.valueOf(ApplicationProperties.KEY.TrgLang.asString().toUpperCase());
         trgLanguage.setSelectedIndex(lng.ordinal());
         trgLanguage.setEditable(false);
-        trgLanguage.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (e.getActionCommand() == "comboBoxChanged") {
-                    Language lng = trgLanguage.getItemAt(trgLanguage.getSelectedIndex());
-                    getDocument().getTranslator().setTrg(lng);
-                }
+        trgLanguage.addActionListener(e -> {
+            if (e.getActionCommand() == "comboBoxChanged") {
+                Language lng12 = trgLanguage.getItemAt(trgLanguage.getSelectedIndex());
+                getDocument().getTranslator().setTrg(lng12);
             }
         });
         trgLanguage.setMaximumSize(new Dimension(100, 100));
@@ -693,7 +692,11 @@ public class DocumentViewer extends JPanel {
     
     private void open(final String pdfFileName) throws IllegalAccessException, IOException, InstantiationException {
         if (!StringUtils.isBlank(pdfFilePath)) {
-            historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale));
+            Language srcLng = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
+            Language trgLng = srcLanguage.getItemAt(trgLanguage.getSelectedIndex());
+            Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
+            historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
+                    getTranslatedDelay(), srcLng, trgLng, rows);
         }
         
         pdfFilePath = pdfFileName;
@@ -740,6 +743,12 @@ public class DocumentViewer extends JPanel {
             currentPage = selectedHistory.getPage();
             imageScale = selectedHistory.getScale().floatValue();
             scale.getEditor().setItem(imageScale * 100);
+            DefaultComboBoxModel<Integer> model = (DefaultComboBoxModel<Integer>) translatedDelay.getModel();
+            Integer index = model.getIndexOf(selectedHistory.getDelay());
+            if (index != -1) translatedDelay.setSelectedIndex(index);
+            DefaultComboBoxModel<Integer> rowsModel = (DefaultComboBoxModel<Integer>) translatedRows.getModel();
+            index = rowsModel.getIndexOf(selectedHistory.getRows());
+            if (index != -1) translatedRows.setSelectedIndex(index);
         }
         
         if (StringUtils.isBlank(pdfFilePath)) {
@@ -786,6 +795,14 @@ public class DocumentViewer extends JPanel {
             imageScrollPane.addMouseWheelListener(new MouseWheelMovedAdapter(imageScrollPane));
             
             fillContent();
+            if (selectedHistory != null) {
+                DefaultComboBoxModel<Language> lngModel = (DefaultComboBoxModel<Language>) srcLanguage.getModel();
+                int index = lngModel.getIndexOf(selectedHistory.getFrom());
+                if (index != -1) srcLanguage.setSelectedIndex(index);
+                lngModel = (DefaultComboBoxModel<Language>) trgLanguage.getModel();
+                index = lngModel.getIndexOf(selectedHistory.getTo());
+                if (index != -1) trgLanguage.setSelectedIndex(index);
+            }
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             openBookButton.setEnabled(true);
@@ -885,9 +902,9 @@ public class DocumentViewer extends JPanel {
                     }
                     try {
                         int y = imageScrollPane.getVerticalScrollBar().getValue();
-                        int offset = Math.abs(units) < 10
-                                             ? Math.abs(units) * 20
-                                             : (int) (Math.pow(2, Math.abs(units)));
+                        int offset = Math.abs(units) < 20
+                                             ? Math.abs(units) * 10
+                                             : (int) (Math.pow(Math.abs(units), 2));
                         imageScrollPane.getVerticalScrollBar().setValue(y + units * offset);
                     } finally {
                         units = 0;

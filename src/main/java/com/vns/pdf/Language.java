@@ -1,7 +1,14 @@
 package com.vns.pdf;
 
+import com.google.api.client.util.Value;
+
 public enum Language {
-    RU("ru"), EN("en"), UA("uk");
+    @Value
+    RU("ru"),
+    @Value
+    EN("en"),
+    @Value
+    UA("uk");
     
     public final String GOOGLE;
     
