@@ -24,6 +24,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -51,6 +52,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -69,6 +71,7 @@ import static java.awt.AWTEvent.KEY_EVENT_MASK;
 import static java.awt.event.KeyEvent.KEY_PRESSED;
 import static java.awt.event.KeyEvent.KEY_RELEASED;
 import static java.awt.event.KeyEvent.VK_ESCAPE;
+import static java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL;
 
 public class DocumentViewer extends JPanel {
     private static final String PREVIOUS = "previous";
@@ -779,6 +782,9 @@ public class DocumentViewer extends JPanel {
             }
             setImageScale(imageScale);
             
+            imageScrollPane.setWheelScrollingEnabled(false);
+            imageScrollPane.addMouseWheelListener(new MouseWheelMovedAdapter(imageScrollPane));
+            
             fillContent();
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
@@ -861,6 +867,43 @@ public class DocumentViewer extends JPanel {
                            .hasArg()
                            .withValueSeparator('=')
                            .create();
+        }
+    }
+    
+    public class MouseWheelMovedAdapter extends MouseAdapter {
+        
+        private final Timer scrollingTimer;
+        private int units;
+        
+        public MouseWheelMovedAdapter(final JScrollPane imageScrollPane) {
+            scrollingTimer = new javax.swing.Timer(100, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (units == 0) {
+                        scrollingTimer.stop();
+                        return;
+                    }
+                    try {
+                        int y = imageScrollPane.getVerticalScrollBar().getValue();
+                        int offset = Math.abs(units) < 10
+                                             ? Math.abs(units) * 20
+                                             : (int) (Math.pow(2, Math.abs(units)));
+                        imageScrollPane.getVerticalScrollBar().setValue(y + units * offset);
+                    } finally {
+                        units = 0;
+                    }
+                }
+            });
+        }
+        
+        @Override
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            if (e.getScrollType() == WHEEL_UNIT_SCROLL) {
+                units += e.getUnitsToScroll() > 0 ? 1 : -1;
+            }
+            if (units != 0 && !scrollingTimer.isRunning()) {
+                scrollingTimer.start();
+            }
         }
     }
 }
