@@ -211,7 +211,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
 //        g.drawRect((int) xMin, (int) yMin, (int) (xMax - xMin), (int) (yMax - yMin));
 //    }
     
-    void drawLine(double xMin, double yMin, double xMax, double yMax, Graphics g) {
+    private void drawLine(double xMin, double yMin, double xMax, double yMax, Graphics g) {
         xMin *= imageScale;
         yMin *= imageScale;
         xMax *= imageScale;
