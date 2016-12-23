@@ -1,6 +1,7 @@
 package com.vns.pdf.impl;
 
 import com.vns.pdf.TextArea;
+import com.vns.pdf.TextLocation;
 import com.vns.pdf.Translator;
 import com.vns.pdf.Viewer;
 import com.vns.pdf.domain.Annotation;
@@ -357,12 +358,12 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         public void mouseMoved(MouseEvent e) {
             cursorX = e.getX();
             cursorY = e.getY();
-            boolean reset = Math.abs(cursorX2 - cursorX) > 10 || Math.abs(cursorY2 - cursorY) > 10;
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
             TextArea anntArea = documentViewer.getDocument().getAnnotationLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
             if (area == null) {
                 if (anntArea != null) changeCursor(Cursor.getDefaultCursor().getType());
-                if (reset) selectedTextScreenAreas.clear();
+                if (Math.abs(cursorX2 - cursorX) > 10 || Math.abs(cursorY2 - cursorY) > 10)
+                    selectedTextScreenAreas.clear();
                 changeCursor(Cursor.DEFAULT_CURSOR);
             } else {
                 changeCursor(Cursor.HAND_CURSOR);
@@ -397,7 +398,10 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             
             List<TextArea> areas = documentViewer.getDocument().getTextLocation(pageNumber).locate(
                     (int) (x1 / imageScale), (int) (y1 / imageScale),
-                    (int) (x2 / imageScale), (int) (y2 / imageScale));
+                    (int) (x2 / imageScale), (int) (y2 / imageScale),
+                    e.isControlDown()
+                            ? TextLocation.SelectedStartegy.EXACTLY
+                            : TextLocation.SelectedStartegy.CONTINUE);
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (cursorX / imageScale), (int) (cursorY / imageScale));
             selectedTextScreenAreas.clear();
             selectedTextScreenAreas.addAll(areas);

@@ -6,11 +6,15 @@ import java.util.List;
 public interface TextLocation {
     TextArea locate(int x, int y);
     
-    List<TextArea> locate(int x1, int y1, int x2, int y2);
+    List<TextArea> locate(int x1, int y1, int x2, int y2, SelectedStartegy strategy);
     
     Collection<? extends TextArea> getTextAreas();
     
     TextArea register(String text, int x, int y, int width, int height) throws InstantiationException, IllegalAccessException;
     
     TextArea register(String text, float x, float y, float width, float height) throws InstantiationException, IllegalAccessException;
+    
+    enum SelectedStartegy {
+        EXACTLY, CONTINUE
+    }
 }

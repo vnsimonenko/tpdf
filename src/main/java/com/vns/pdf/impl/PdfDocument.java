@@ -245,6 +245,7 @@ class PdfDocument {
         }
         return parsePDDestination(dest);
     }
+    
     private ActionData parsePDDestination(PDDestination dest) throws IOException {
         if (dest != null) {
             float destZoom = -1;
