@@ -3,6 +3,7 @@ package com.vns.pdf.impl;
 import com.vns.pdf.TextArea;
 import com.vns.pdf.TextLocation;
 import com.vns.pdf.Translator;
+import com.vns.pdf.Utils;
 import com.vns.pdf.Viewer;
 import com.vns.pdf.domain.Annotation;
 import com.vns.pdf.gmodel.Dic;
@@ -23,8 +24,8 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
@@ -91,6 +92,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
     private int cursorX;
     private int cursorY;
     private boolean isSelectedAreas = false;
+    private boolean isSymbolMode = false;
     private float imageScale = 2.0f;
     private boolean isActiveTranslation;
     private AtomicReference<String> englishText = new AtomicReference<>("");
@@ -104,7 +106,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         addMouseListener(new MouseClickedAdapter());
         addMouseMotionListener(new MouseMovedAdapter());
         
-        selectedTextScreenAreas = new HashSet<>();
+        selectedTextScreenAreas = new LinkedHashSet<>();
         popupMenu = new JPopupMenu();
         popupMenu.addPopupMenuListener(new PopupMenuListener() {
             @Override
@@ -191,11 +193,10 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
                 g.fillRect(x1, y1, x2 - x1, y2 - y1);
             }
             if (isSelectedAreas) {
-                g.setColor(Color.gray);
+                g.setColor(isSymbolMode ? Color.white : Color.gray);
                 g.drawRect(cursorX1, cursorY1, cursorX - cursorX1, cursorY - cursorY1);
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
             g.setColor(Color.red);
             int w = SwingUtilities.computeStringWidth(getFontMetrics(getFont()), ex.getMessage());
             g.drawString(ex.getMessage(),
@@ -391,14 +392,13 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             cursorX = e.getX();
             cursorY = e.getY();
             
-            int x1 = cursorX1 <= cursorX ? cursorX1 : cursorX;
-            int x2 = cursorX1 <= cursorX ? cursorX : cursorX1;
-            int y1 = cursorY1 <= cursorY ? cursorY1 : cursorY;
-            int y2 = cursorY1 <= cursorY ? cursorY : cursorY1;
+            int x1 = (int) ((cursorX1 <= cursorX ? cursorX1 : cursorX) / imageScale);
+            int x2 = (int) ((cursorX1 <= cursorX ? cursorX : cursorX1) / imageScale);
+            int y1 = (int) ((cursorY1 <= cursorY ? cursorY1 : cursorY) / imageScale);
+            int y2 = (int) ((cursorY1 <= cursorY ? cursorY : cursorY1) / imageScale);
             
             List<TextArea> areas = documentViewer.getDocument().getTextLocation(pageNumber).locate(
-                    (int) (x1 / imageScale), (int) (y1 / imageScale),
-                    (int) (x2 / imageScale), (int) (y2 / imageScale),
+                    x1, y1, x2, y2,
                     e.isControlDown()
                             ? TextLocation.SelectedStartegy.EXACTLY
                             : TextLocation.SelectedStartegy.CONTINUE);
@@ -408,6 +408,17 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             if (area != null) selectedTextScreenAreas.add(area);
             currentTextScreenArea = area;
             repaint();
+            
+            if (e.isControlDown() && e.isAltDown()) {
+                isSymbolMode = true;
+                popupMenu.removeAll();
+                TextArea ta = Utils.extractText(x1, y1, x2, y2, new ArrayList<>(selectedTextScreenAreas));
+                selectedTextScreenAreas.clear();
+                selectedTextScreenAreas.add(ta);
+                popupMenu.add(ta.getText());
+                popupMenu.setVisible(true);
+                popupMenu.show(ImageViewer.this, e.getX(), e.getY() + 20);
+            }
         }
     }
     
@@ -416,6 +427,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         @Override
         public void mousePressed(MouseEvent e) {
             isSelectedAreas = true;
+            isSymbolMode = false;
             cursorX = e.getX();
             cursorY = e.getY();
             cursorX1 = cursorX;
@@ -464,6 +476,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         @Override
         public void mouseReleased(MouseEvent e) {
             isSelectedAreas = false;
+            isSymbolMode = false;
             cursorX = e.getX();
             cursorY = e.getY();
             cursorX2 = cursorX;
@@ -482,8 +495,10 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         private void reset() {
             prevTextScreenArea = null;
             isFirst = true;
-            popupMenu.removeAll();
-            popupMenu.setVisible(false);
+            if (!isSymbolMode) {
+                popupMenu.removeAll();
+                popupMenu.setVisible(false);
+            }
             waiting = 0;
         }
         
