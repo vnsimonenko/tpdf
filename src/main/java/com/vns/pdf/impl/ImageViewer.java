@@ -418,6 +418,9 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
                 popupMenu.add(ta.getText());
                 popupMenu.setVisible(true);
                 popupMenu.show(ImageViewer.this, e.getX(), e.getY() + 20);
+            } else if (popupMenu.isVisible()) {
+                popupMenu.removeAll();
+                popupMenu.setVisible(false);
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.vns.pdf.impl;
 
 import com.vns.pdf.ApplicationProperties;
+import com.vns.pdf.Language;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -8,7 +9,6 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static java.lang.System.out;
-import static org.junit.Assert.*;
 
 public class HistoryStoreTest {
     @BeforeClass
@@ -21,9 +21,9 @@ public class HistoryStoreTest {
     @Test
     public void test() throws Exception {
         HistoryStore store = new HistoryStore();
-        store.save("test1", 1, BigDecimal.valueOf(100));
+        store.save("test1", 1, BigDecimal.valueOf(100), 1000, Language.EN, Language.RU, 5);
         Thread.sleep(1000);
-        store.save("test2", 2, BigDecimal.valueOf(200));
+        store.save("test2", 2, BigDecimal.valueOf(200), 1000, Language.EN, Language.RU, 5);
         
         List<HistoryStore.History> hs = store.read();
         for (HistoryStore.History h : hs) {

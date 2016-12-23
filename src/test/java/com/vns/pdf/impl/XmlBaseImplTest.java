@@ -11,13 +11,14 @@ import org.junit.Test;
 public class XmlBaseImplTest {
     @Test
     public void loadFile() throws IOException {
-        URL u = getClass().getClassLoader().getResource("dictionary.data");        
+        URL u = getClass().getClassLoader().getResource("dictionary.data");
         DataStore base = new DataStore();
         base.load(Paths.get(u.getFile()).toFile());
     }
+    
     @Test
     public void saveFile() throws IOException {
-        URL u1 = getClass().getClassLoader().getResource("dictionary.data");        
+        URL u1 = getClass().getClassLoader().getResource("dictionary.data");
         URL u2 = getClass().getClassLoader().getResource("dictionary2.data");
         Files.copy(u2.openStream(), Paths.get(u1.getFile()), StandardCopyOption.REPLACE_EXISTING);
         try {
