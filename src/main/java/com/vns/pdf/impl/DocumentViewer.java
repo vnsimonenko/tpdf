@@ -751,6 +751,7 @@ public class DocumentViewer extends JPanel {
             if (index != -1) translatedRows.setSelectedIndex(index);
         }
         
+        contentPane.removeAll();
         if (StringUtils.isBlank(pdfFilePath)) {
             openBookButton.setEnabled(true);
             frame.setTitle("");
@@ -794,7 +795,6 @@ public class DocumentViewer extends JPanel {
             imageScrollPane.setWheelScrollingEnabled(false);
             imageScrollPane.addMouseWheelListener(new MouseWheelMovedAdapter(imageScrollPane));
             
-            fillContent();
             if (selectedHistory != null) {
                 DefaultComboBoxModel<Language> lngModel = (DefaultComboBoxModel<Language>) srcLanguage.getModel();
                 int index = lngModel.getIndexOf(selectedHistory.getFrom());
@@ -806,6 +806,15 @@ public class DocumentViewer extends JPanel {
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             openBookButton.setEnabled(true);
+            frame.setTitle("");
+            contentPane.removeAll();
+            SwingUtilities.invokeLater(() -> openBookButton.doClick());
+        }
+        
+        try {
+            fillContent();
+        } catch (Exception ex) {
+            logger.error(ex.getMessage(), ex);
         }
     }
     

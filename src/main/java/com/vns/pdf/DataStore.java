@@ -6,64 +6,32 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DataStore {
-    private final static String IDENTITY = "identity";
-    private final static String VERSION = "version";
     private final static Logger LOGGER = LoggerFactory.getLogger(DataStore.class);
     private Map<String, FileMetaInfo> indexes = new HashMap<>();
     private File dbFile;
-    private GoogleDriveStore googleDrive;
     
-    public DataStore() {
+    public DataStore(File dbFile) throws IOException {
+        load(dbFile);
     }
     
-    public void setGoogleDrive(GoogleDriveStore googleDrive) {
-        this.googleDrive = googleDrive;
+    public boolean isEmpty() {
+        return indexes.isEmpty();
     }
     
-    public void synchWithGoogle(String dictDirId) throws IOException {
-        if (googleDrive == null || StringUtils.isBlank(dictDirId)) {
-            return;
-        }
-        List<com.google.api.services.drive.model.File> files = googleDrive.getFilesExecutor().addParentId(dictDirId).execute();
-        for (com.google.api.services.drive.model.File f : files) {
-            synchWithGoogleFile(f);
-        }
-        files = googleDrive.getFilesExecutor().setName(dbFile.getName()).addParentId(dictDirId).execute();
-        if (files.size() == 0) {
-            googleDrive.createFileExecutor().setName(dbFile.getName())
-                    .addParentId(dictDirId)
-                    .putProperty(IDENTITY, dbFile.getName())
-                    .putProperty(VERSION, "" + dbFile.lastModified())
-                    .setContent(dbFile)
-                    .execute();
-        }
+    public void reload() throws IOException {
+        load(dbFile);
     }
     
-    private void synchWithGoogleFile(com.google.api.services.drive.model.File glFile) throws IOException {
-        long fileVersion = dbFile.lastModified();
-        long glVersion = Long.parseLong(glFile.getProperties().get(VERSION));
-        if (glVersion < fileVersion) {
-            googleDrive.updateFileExecutor().setId(glFile.getId())
-                    .putProperty(IDENTITY, glFile.getProperties().get(IDENTITY))
-                    .putProperty(VERSION, "" + fileVersion)
-                    .setContent(dbFile).execute();
-        } else if (glVersion > fileVersion || indexes.size() == 0) {
-            try (InputStream in = googleDrive.downloadFileExecutor().setId(glFile.getId()).execute()) {
-                Files.copy(in, dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
-    }
-    
-    public void load(File dbFile) throws IOException {
+    private void load(File dbFile) throws IOException {
         this.dbFile = dbFile;
         indexes = new HashMap<>();
         fillIndex();
@@ -114,6 +82,21 @@ public class DataStore {
             indexes.put(key, new FileMetaInfo(startPos, dataPos, endPos));
         } finally {
             f.close();
+        }
+    }
+    
+    public void merge(InputStream in) throws IOException {
+        Path p = Files.createTempFile("tpdf1", "_" + System.currentTimeMillis(), new FileAttribute[0]);
+        try {
+            Files.copy(in, p, StandardCopyOption.REPLACE_EXISTING);
+            DataStore ds = new DataStore(p.toFile());
+            for (String key : ds.indexes.keySet()) {
+                if (!indexes.containsKey(key)) {
+                    save(key, ds.read(key));
+                }
+            }
+        } finally {
+            Files.deleteIfExists(p);
         }
     }
     

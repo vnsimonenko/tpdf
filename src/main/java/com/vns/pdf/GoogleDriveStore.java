@@ -8,6 +8,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.FileContent;
 import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
@@ -16,6 +17,7 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.GeneratedIds;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -170,14 +172,14 @@ public class GoogleDriveStore {
         return file;
     }
     
-    private File updateFile(File targetFile, Map<String, String> props, java.io.File content) throws IOException {
+    private File updateFile(File targetFile, Map<String, String> props, InputStream content) throws IOException {
         File fileMetadata = new File();
         fileMetadata.setName(targetFile.getName());
         fileMetadata.setMimeType(targetFile.getMimeType());
         fileMetadata.setParents(targetFile.getParents());
         setProperty(fileMetadata, props);
         
-        FileContent mediaContent = new FileContent(targetFile.getMimeType(), content);
+        InputStreamContent mediaContent = new InputStreamContent(targetFile.getMimeType(), content);
         File file = getDriveService().files().update(targetFile.getId(), fileMetadata, mediaContent)
                             .setFields("id, name, parents, modifiedTime, properties, appProperties").execute();
         return file;
@@ -261,6 +263,12 @@ public class GoogleDriveStore {
         return new C();
     }
     
+    public GetFileExecutor getFileExecutor() {
+        class C extends ParameterBuilder<C> implements GetFileExecutor {
+        }
+        return new C();
+    }
+    
     public CreateFolderExecutor createFolderExecutor() {
         class C extends ParameterBuilder<C> implements CreateFolderExecutor {
         }
@@ -273,8 +281,14 @@ public class GoogleDriveStore {
         return new C();
     }
     
-    public UpdateFileBuilder updateFileExecutor() {
-        class C extends ParameterBuilder<C> implements UpdateFileBuilder {
+    public UpdateFileExecutor updateFileExecutor() {
+        class C extends ParameterBuilder<C> implements UpdateFileExecutor {
+        }
+        return new C();
+    }
+    
+    public UpdateStreamExecutor updateStreamExecutor() {
+        class C extends ParameterBuilder<C> implements UpdateStreamExecutor {
         }
         return new C();
     }
@@ -285,8 +299,8 @@ public class GoogleDriveStore {
         return new C();
     }
     
-    public DownloadFileBuilder downloadFileExecutor() {
-        class C extends ParameterBuilder<C> implements DownloadFileBuilder {
+    public DownloadFileExecutor downloadFileExecutor() {
+        class C extends ParameterBuilder<C> implements DownloadFileExecutor {
         }
         return new C();
     }
@@ -305,6 +319,20 @@ public class GoogleDriveStore {
         default List<File> execute() throws IOException {
             ParameterBuilder b = (ParameterBuilder) this;
             return b.getDrive().getFiles(b.name, b.properties, (String[]) b.parentIds.toArray(new String[0]));
+        }
+    }
+    
+    interface GetFileExecutor extends Executor<File> {
+        GetFileExecutor setName(String name);
+        
+        GetFileExecutor putProperty(String key, String value);
+        
+        GetFileExecutor addParentId(String parentId);
+        
+        default File execute() throws IOException {
+            ParameterBuilder b = (ParameterBuilder) this;
+            List<File> fs = b.getDrive().getFiles(b.name, b.properties, (String[]) b.parentIds.toArray(new String[0]));
+            return fs.size() == 0 ? null : fs.get(0);
         }
     }
     
@@ -336,7 +364,47 @@ public class GoogleDriveStore {
         
         default File execute() throws IOException {
             ParameterBuilder b = (ParameterBuilder) this;
-            return b.getDrive().createFile(b.name, b.properties, b.getFirstParentId(), b.mimeType, b.content);
+            return b.getDrive().createFile(b.name, b.properties, b.getFirstParentId(), b.mimeType, b.fileContent);
+        }
+    }
+    
+    interface UpdateStreamExecutor extends Executor<File> {
+        UpdateStreamExecutor setId(String id);
+        
+        UpdateStreamExecutor setName(String name);
+        
+        UpdateStreamExecutor addParentId(String parentId);
+        
+        UpdateStreamExecutor setMimeType(String mimeType);
+        
+        UpdateStreamExecutor putProperty(String key, String value);
+        
+        UpdateStreamExecutor setContent(InputStream content);
+        
+        default File execute() throws IOException {
+            ParameterBuilder b = (ParameterBuilder) this;
+            File targetFile = b.getDrive().getFile(b.id);
+            return b.getDrive().updateFile(targetFile, b.properties, b.streamContent);
+        }
+    }
+    
+    interface UpdateFileExecutor extends Executor<File> {
+        UpdateFileExecutor setId(String id);
+        
+        UpdateFileExecutor setName(String name);
+        
+        UpdateFileExecutor addParentId(String parentId);
+        
+        UpdateFileExecutor setMimeType(String mimeType);
+        
+        UpdateFileExecutor putProperty(String key, String value);
+        
+        UpdateFileExecutor setContent(java.io.File content);
+        
+        default File execute() throws IOException {
+            ParameterBuilder b = (ParameterBuilder) this;
+            File targetFile = b.getDrive().getFile(b.id);
+            return b.getDrive().updateFile(targetFile, b.properties, new FileInputStream(b.fileContent));
         }
     }
     
@@ -351,27 +419,13 @@ public class GoogleDriveStore {
         }
     }
     
-    interface DownloadFileBuilder {
-        DownloadFileBuilder setId(String id);
+    interface DownloadFileExecutor {
+        DownloadFileExecutor setId(String id);
         
         default InputStream execute() throws IOException {
             ParameterBuilder b = (ParameterBuilder) this;
             File targetFile = b.getDrive().getFile(b.id);
             return b.getDrive().downloadFile(targetFile);
-        }
-    }
-    
-    interface UpdateFileBuilder extends CreateFileExecutor {
-        UpdateFileBuilder setId(String id);
-        
-        UpdateFileBuilder putProperty(String key, String value);
-        
-        UpdateFileBuilder setContent(java.io.File content);
-        
-        default File execute() throws IOException {
-            ParameterBuilder b = (ParameterBuilder) this;
-            File targetFile = b.getDrive().getFile(b.id);
-            return b.getDrive().updateFile(targetFile, b.properties, b.content);
         }
     }
     
@@ -381,7 +435,8 @@ public class GoogleDriveStore {
         private Set<String> parentIds = Collections.emptySet();
         private Map<String, String> properties = Collections.emptyMap();
         private String mimeType = "text/plain";
-        private java.io.File content;
+        private java.io.File fileContent;
+        private InputStream streamContent;
         
         public T setId(String id) {
             this.id = id;
@@ -415,8 +470,13 @@ public class GoogleDriveStore {
             return (T) this;
         }
         
-        public T setContent(java.io.File content) {
-            this.content = content;
+        public T setContent(java.io.File fileContent) {
+            this.fileContent = fileContent;
+            return (T) this;
+        }
+        
+        public T setContent(InputStream content) {
+            this.streamContent = content;
             return (T) this;
         }
         

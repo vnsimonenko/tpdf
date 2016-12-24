@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -70,12 +69,11 @@ public class DataManager {
     private DataStore getDataStore(String dataStoreName) throws IOException {
         DataStore ds = dictStore.get(dataStoreName);
         if (ds == null) {
-            ds = new DataStore();
             File file = Paths.get(dictDir.toAbsolutePath().toString(), dataStoreName).toFile();
-            List<com.google.api.services.drive.model.File> gfiles =
-                    gds.getFilesExecutor().setName(file.getName()).addParentId(googleDirectoryId).execute();
-            synchWithGoogleFile(gfiles.size() > 0 ? gfiles.get(0) : null, file);
-            ds.load(file);
+            ds = new DataStore(file);
+            com.google.api.services.drive.model.File gfile =
+                    gds.getFileExecutor().setName(file.getName()).addParentId(googleDirectoryId).execute();
+            if (gfile != null) synchWithGoogle(gfile, ds);
             dictStore.put(dataStoreName, ds);
         }
         return ds;
@@ -84,33 +82,27 @@ public class DataManager {
     private void synchWithGoogle() throws IOException {
         for (DataStore ds : dictStore.values()) {
             File file = ds.getDbFile();
-            List<com.google.api.services.drive.model.File> gfiles =
-                    gds.getFilesExecutor().setName(file.getName()).addParentId(googleDirectoryId).execute();
-            synchWithGoogleFile(gfiles.size() > 0 ? gfiles.get(0) : null, file);
+            com.google.api.services.drive.model.File gfile =
+                    gds.getFileExecutor().setName(file.getName()).addParentId(googleDirectoryId).execute();
+            if (gfile != null) synchWithGoogle(gfile, ds);
         }
     }
     
-    private void synchWithGoogleFile(com.google.api.services.drive.model.File glFile, File file) throws IOException {
-        long fileVersion = file.lastModified();
-        if (glFile == null && file.length() > 0) {
-            gds.createFileExecutor().setName(file.getName())
-                    .addParentId(googleDirectoryId)
-                    .putProperty(IDENTITY, file.getName())
-                    .putProperty(VERSION, "" + file.lastModified())
-                    .setContent(file)
-                    .execute();
-        } else if (glFile != null) {
-            long glVersion = Long.parseLong(glFile.getProperties().get(VERSION));
-            if (glVersion < fileVersion) {
-                gds.updateFileExecutor().setId(glFile.getId())
-                        .putProperty(IDENTITY, glFile.getProperties().get(IDENTITY))
-                        .putProperty(VERSION, "" + fileVersion)
-                        .setContent(file).execute();
-            } else if (glVersion > fileVersion || file.length() == 0) {
-                try (InputStream in = gds.downloadFileExecutor().setId(glFile.getId()).execute()) {
-                    Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
+    private void synchWithGoogle(com.google.api.services.drive.model.File glFile, DataStore ds) throws IOException {
+        long glVersion = Long.parseLong(glFile.getProperties().get(VERSION));
+        if (ds.isEmpty()) {
+            try (InputStream in = gds.downloadFileExecutor().setId(glFile.getId()).execute()) {
+                Files.copy(in, ds.getDbFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
+            ds.reload();
+        } else if (glVersion != ds.getDbFile().lastModified()) {
+            try (InputStream in = gds.downloadFileExecutor().setId(glFile.getId()).execute()) {
+                ds.merge(in);
+            }
+            gds.updateFileExecutor().setId(glFile.getId())
+                    .putProperty(IDENTITY, glFile.getProperties().get(IDENTITY))
+                    .putProperty(VERSION, "" + ds.getDbFile().lastModified())
+                    .setContent(ds.getDbFile()).execute();
         }
     }
 }
