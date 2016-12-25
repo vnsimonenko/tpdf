@@ -19,6 +19,8 @@ import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -50,6 +52,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
@@ -107,6 +110,7 @@ public class DocumentViewer extends JPanel {
     private LinkedBlockingDeque historyNextDeque = new LinkedBlockingDeque();
     private JPanel contentPane;
     private JPanel workingPane;
+    private JTextArea messageArea;
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -192,18 +196,38 @@ public class DocumentViewer extends JPanel {
         });
     }
     
+    void sendMessage(String msg) {
+        messageArea.insert("\n=====\n\n", 0);
+        messageArea.insert(msg, 0);
+    }
+    
     private void createViewArea() {
+        JSplitPane viewSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        viewSplitPane.setOneTouchExpandable(true);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                viewSplitPane.setDividerLocation(0.9);
+                DocumentViewer.this.removeComponentListener(this);
+            }
+        });
         JSplitPane workingSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        workingSplitPane.setOneTouchExpandable(true);
         contentPane = new JPanel();
         contentPane.setLayout(new BorderLayout());
         workingPane = new JPanel();
         workingPane.setLayout(new BorderLayout());
+        messageArea = new JTextArea();
+        messageArea.setLineWrap(true);
+        JScrollPane messagePane = new JScrollPane(messageArea);
+        
+        viewSplitPane.setTopComponent(workingPane);
+        viewSplitPane.setBottomComponent(messagePane);
         
         workingSplitPane.setTopComponent(contentPane);
-        workingSplitPane.setBottomComponent(workingPane);
+        workingSplitPane.setBottomComponent(viewSplitPane);
         add(workingSplitPane, BorderLayout.CENTER);
-        //frame.setSize(150, 150);
-        workingSplitPane.setDividerLocation(0.5);
+        workingSplitPane.setDividerLocation(100);
     }
     
     public boolean isLock() {

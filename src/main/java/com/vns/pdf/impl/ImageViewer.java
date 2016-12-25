@@ -324,16 +324,25 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
     
     @Override
     public void setTranslation(Dics dics) {
+        StringBuilder sb2 = new StringBuilder();
         StringBuilder sb = new StringBuilder();
         for (Dic dic : dics.getDics()) {
             if (sb.length() > 0) sb.append("\n");
+            if (sb2.length() > 0) sb2.append("\n");
+            
             sb.append("---");
             sb.append(dic.getPos());
             sb.append("---");
+            
+            sb2.append("---");
+            sb2.append(dic.getPos());
+            sb2.append("---");
             int row = 0;
             for (Entry ent : dic.getEntries()) {
                 sb.append("\n");
                 sb.append(ent.getWord());
+                sb2.append(row == 0 ? "\n" : ", ");
+                sb2.append(ent.getWord());
                 row++;
                 if (row == documentViewer.getTranslatedRows()) {
                     break;
@@ -344,6 +353,8 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             for (Trans tn : dics.getTrans()) {
                 if (sb.length() > 0) sb.append("\n");
                 sb.append(tn.getTrans());
+                if (sb2.length() > 0) sb2.append("\n");
+                sb2.append(tn.getTrans());
             }
         }
         
@@ -357,7 +368,9 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         popupMenu.show(this, cursorX, cursorY + 20);
         
         if (!StringUtils.isBlank(dics.getSourceText())) {
-            TLLOG.info("\n\n" + dics.getSourceText() + "\n\n" + text.getText() + "\n");
+            String msg = dics.getSourceText() + "\n\n" + sb2.toString();
+            TLLOG.info("\n\n" + msg + "\n");
+            documentViewer.sendMessage(msg);
         }
     }
     
