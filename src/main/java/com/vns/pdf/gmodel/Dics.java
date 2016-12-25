@@ -10,6 +10,7 @@ public class Dics implements Serializable {
     @com.google.api.client.util.Key("dict")
     private List<Dic> dics;
     private String rawText;
+    private String sourceText;
     
     public List<Dic> getDics() {
         return dics == null ? Collections.emptyList() : dics;
@@ -33,5 +34,13 @@ public class Dics implements Serializable {
     
     public void setRawText(String rawText) {
         this.rawText = rawText;
+    }
+    
+    public String getSourceText() {
+        return sourceText;
+    }
+    
+    public void setSourceText(String sourceText) {
+        this.sourceText = sourceText;
     }
 }

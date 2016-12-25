@@ -115,6 +115,7 @@ public class TranslatorImpl implements Translator {
                 } else {
                     dics = googleReceiver.toDics(rawDict.getBytes());
                 }
+                dics.setSourceText(srcNormal);
                 cache.put(srcNormal + "." + ext, dics);
             } catch (Exception ex) {
                 LOGGER.error(ex.getMessage(), ex);

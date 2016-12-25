@@ -40,9 +40,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ImageViewer extends JPanel implements Viewer, Translator.TranslatorEvent {
     
+    private final static Logger TLLOG = LoggerFactory.getLogger("tllogger");
     private final static int PERIOD = 100;
     private static Timer timerOfEvents;
     private static ConcurrentSkipListSet<TimerHandler> timerOfEventsQueue;
@@ -352,6 +355,10 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         popupMenu.add(text);
         popupMenu.setVisible(false);
         popupMenu.show(this, cursorX, cursorY + 20);
+        
+        if (!StringUtils.isBlank(dics.getSourceText())) {
+            TLLOG.info("\n\n" + dics.getSourceText() + "\n\n" + text.getText() + "\n");
+        }
     }
     
     public class MouseMovedAdapter extends MouseAdapter {

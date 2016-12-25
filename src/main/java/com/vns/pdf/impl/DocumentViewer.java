@@ -837,7 +837,10 @@ public class DocumentViewer extends JPanel {
         for (TextArea ta : document.getBookmarks()) {
             JLabel f = new JLabel();
             f.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            f.setText(ta.getText());
+            final Annotation a = (Annotation) ta.getTag();
+            String page = (a == null ? "" : (a.getDestPage() + "      ").substring(0, 5)).replaceAll(" ", "&ensp;");
+            f.setText("<html><font color=gray>" + page + "</font><font color=black>" + ta.getText().replaceAll(" ", "&ensp;") +
+                              "</font></html>");
             f.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
