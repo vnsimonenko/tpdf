@@ -134,11 +134,18 @@ public class DocumentViewer extends JPanel {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         DocumentViewer documentViewer = new DocumentViewer(frame);
         documentViewer.createToolBar();
-        frame.add(documentViewer);
-        documentViewer.createViewArea();
-        documentViewer.open(pdfFileName);
-        frame.pack();
+        
+        frame.setExtendedState(frame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         frame.setVisible(true);
+        try {
+            frame.add(documentViewer);
+            documentViewer.createViewArea();
+            documentViewer.open(pdfFileName);
+            frame.pack();
+        } finally {
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        }
         
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
             private boolean lock;
