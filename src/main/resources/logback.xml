@@ -3,6 +3,7 @@
     <property name="LOG_HOME" value="${LogDir}"/>
     <property name="LOG_FILE_NAME" value="tpdf.log"/>
     <property name="LOG_GL_FILE_NAME" value="gltpdf.log"/>
+    <property name="LOG_TL_FILE_NAME" value="translation.log"/>
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <file>${LOG_HOME}/${LOG_FILE_NAME}</file>
         <encoder>
@@ -15,9 +16,19 @@
             <pattern>%date{ISO8601} %-5level %-5level %logger{36} %X{sourceThread} - %msg%n</pattern>
         </encoder>
     </appender>
+    <appender name="TLFILE" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_HOME}/${LOG_TL_FILE_NAME}</file>
+        <encoder>
+            <pattern>%date{ISO8601}%msg%n</pattern>
+        </encoder>
+    </appender>
     <logger name="gllogger" additivity="false">
         <level value="INFO"/>
         <appender-ref ref="GLFILE"/>
+    </logger>
+    <logger name="tllogger" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="TLFILE"/>
     </logger>
 
     <root level="DEBUG">
