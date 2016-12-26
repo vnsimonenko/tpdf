@@ -21,9 +21,9 @@ public class HistoryStoreTest {
     @Test
     public void test() throws Exception {
         HistoryStore store = new HistoryStore();
-        store.save("test1", 1, BigDecimal.valueOf(100), 1000, Language.EN, Language.RU, 5);
+        store.save("test1", 1, BigDecimal.valueOf(100), 1000, Language.EN, Language.RU, 5, -1, -1);
         Thread.sleep(1000);
-        store.save("test2", 2, BigDecimal.valueOf(200), 1000, Language.EN, Language.RU, 5);
+        store.save("test2", 2, BigDecimal.valueOf(200), 1000, Language.EN, Language.RU, 5, -1, -1);
         
         List<HistoryStore.History> hs = store.read();
         for (HistoryStore.History h : hs) {
