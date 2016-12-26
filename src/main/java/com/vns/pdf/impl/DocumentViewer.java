@@ -199,7 +199,7 @@ public class DocumentViewer extends JPanel {
             }
         });
     }
-
+    
     void sendMessage(String msg) {
         messageArea.insert("\n=====\n\n", 0);
         messageArea.insert(msg, 0);
@@ -857,14 +857,8 @@ public class DocumentViewer extends JPanel {
         if (selectedHistory != null) {
             final int bs = selectedHistory.getBottomSplitSize();
             final int ls = selectedHistory.getLeftSplitSize();
-            addComponentListener(new ComponentAdapter() {
-                @Override
-                public void componentResized(ComponentEvent e) {
-                    viewSplitPane.setDividerLocation(bs == -1 ? 1.0 : bs);
-                    workingSplitPane.setDividerLocation(ls);
-                    DocumentViewer.this.removeComponentListener(this);
-                }
-            });
+            viewSplitPane.setDividerLocation(bs);
+            workingSplitPane.setDividerLocation(ls);
         }
     }
     
