@@ -201,8 +201,10 @@ public class DocumentViewer extends JPanel {
     }
     
     void sendMessage(String msg) {
-        messageArea.insert("\n=====\n\n", 0);
-        messageArea.insert(msg, 0);
+        if (!StringUtils.isBlank(msg)) {
+            messageArea.insert("\n=====\n\n", 0);
+            messageArea.insert(msg, 0);
+        }
     }
     
     private void createViewArea() {
