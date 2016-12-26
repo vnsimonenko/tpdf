@@ -15,6 +15,6 @@ public interface TextLocation {
     TextArea register(String text, float x, float y, float width, float height) throws InstantiationException, IllegalAccessException;
     
     enum SelectedStartegy {
-        EXACTLY, CONTINUE
+        FRAMEIN, FRAMEOUT, CUT
     }
 }

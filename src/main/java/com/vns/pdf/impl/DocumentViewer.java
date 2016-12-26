@@ -111,6 +111,8 @@ public class DocumentViewer extends JPanel {
     private JPanel contentPane;
     private JPanel workingPane;
     private JTextArea messageArea;
+    private JSplitPane viewSplitPane;
+    private JSplitPane workingSplitPane;
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -122,8 +124,10 @@ public class DocumentViewer extends JPanel {
                 Language srcLng = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
                 Language trgLng = srcLanguage.getItemAt(trgLanguage.getSelectedIndex());
                 Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
+                int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
+                int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
                 historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                        getTranslatedDelay(), srcLng, trgLng, rows);
+                        getTranslatedDelay(), srcLng, trgLng, rows, left, bottom);
                 if (document != null) document.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -195,23 +199,23 @@ public class DocumentViewer extends JPanel {
             }
         });
     }
-    
+
     void sendMessage(String msg) {
         messageArea.insert("\n=====\n\n", 0);
         messageArea.insert(msg, 0);
     }
     
     private void createViewArea() {
-        JSplitPane viewSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        viewSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         viewSplitPane.setOneTouchExpandable(true);
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                viewSplitPane.setDividerLocation(0.9);
+                viewSplitPane.setDividerLocation(1.0);
                 DocumentViewer.this.removeComponentListener(this);
             }
         });
-        JSplitPane workingSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        workingSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         workingSplitPane.setOneTouchExpandable(true);
         contentPane = new JPanel();
         contentPane.setLayout(new BorderLayout());
@@ -227,7 +231,7 @@ public class DocumentViewer extends JPanel {
         workingSplitPane.setTopComponent(contentPane);
         workingSplitPane.setBottomComponent(viewSplitPane);
         add(workingSplitPane, BorderLayout.CENTER);
-        workingSplitPane.setDividerLocation(100);
+        workingSplitPane.setDividerLocation(-1);
     }
     
     public boolean isLock() {
@@ -726,8 +730,10 @@ public class DocumentViewer extends JPanel {
             Language srcLng = srcLanguage.getItemAt(srcLanguage.getSelectedIndex());
             Language trgLng = srcLanguage.getItemAt(trgLanguage.getSelectedIndex());
             Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
+            int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
+            int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
             historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                    getTranslatedDelay(), srcLng, trgLng, rows);
+                    getTranslatedDelay(), srcLng, trgLng, rows, left, bottom);
         }
         
         pdfFilePath = pdfFileName;
@@ -846,6 +852,19 @@ public class DocumentViewer extends JPanel {
             fillContent();
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
+        }
+        
+        if (selectedHistory != null) {
+            final int bs = selectedHistory.getBottomSplitSize();
+            final int ls = selectedHistory.getLeftSplitSize();
+            addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    viewSplitPane.setDividerLocation(bs == -1 ? 1.0 : bs);
+                    workingSplitPane.setDividerLocation(ls);
+                    DocumentViewer.this.removeComponentListener(this);
+                }
+            });
         }
     }
     

@@ -8,10 +8,14 @@ import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -24,6 +28,16 @@ public class TextLocationImpl implements TextLocation {
     
     public TextLocationImpl() {
         init();
+    }
+    
+    private static TextArea cutText(float x1, float y1, float x2, float y2, List<TextArea> areas) {
+        String s = "";
+        for (TextArea ta : areas) {
+            int l1 = ta.getXmin() > x1 ? 0 : (int) ((x1 - ta.getXmin()) / ta.getWeight() * ta.getText().length());
+            int l2 = ta.getXmax() < x2 ? 0 : (int) ((ta.getXmax() - x2) / ta.getWeight() * ta.getText().length());
+            s += ta.getText().substring(l1, ta.getText().length() - l2) + " ";
+        }
+        return new TextArea(s, new TextPoint((int) x1, (int) y1), new TextPoint((int) x2, (int) y2));
     }
     
     public TextArea locate(int x, int y) {
@@ -43,10 +57,12 @@ public class TextLocationImpl implements TextLocation {
     
     public List<TextArea> locate(int x1, int y1, int x2, int y2, SelectedStartegy strategy) {
         switch (strategy) {
-            case CONTINUE:
-                return locateContinue(x1, y1, x2, y2);
-            case EXACTLY:
-                return locateExactly(x1, y1, x2, y2);
+            case FRAMEOUT:
+                return locateFrameOut(x1, y1, x2, y2);
+            case FRAMEIN:
+                return locateFrameIn(x1, y1, x2, y2);
+            case CUT:
+                return locateCut(x1, y1, x2, y2);
         }
         throw new IllegalArgumentException();
     }
@@ -89,9 +105,15 @@ public class TextLocationImpl implements TextLocation {
         textGrid = new HashMap<>((int) (capacity1 * capacity2));
     }
     
-    private List<TextArea> locateExactly(int x1, int y1, int x2, int y2) {
+    private List<TextArea> locateCut(int x1, int y1, int x2, int y2) {
+        List<TextArea> areas = locateFrameIn(x1, y1, x2, y2);
+        System.out.println(areas.size());
+        return Arrays.asList(cutText(x1, y1, x2, y2, areas));
+    }
+    
+    private List<TextArea> locateFrameIn(int x1, int y1, int x2, int y2) {
         Rectangle selectedRectangle = new Rectangle(x1, y1, x2 - x1, y2 - y1 == 0 ? 1 : y2 - y1);
-        List<TextArea> areas = new ArrayList<>();
+        Set<TextArea> areas = new LinkedHashSet<>();
         for (Map<TextPoint, TextArea> ent : textGrid.values()) {
             for (TextArea area : ent.values()) {
                 Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
@@ -103,14 +125,15 @@ public class TextLocationImpl implements TextLocation {
                 }
             }
         }
-        return areas;
+        return new ArrayList<>(areas);
     }
     
-    private List<TextArea> locateContinue(int x1, int y1, int x2, int y2) {
+    private List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2) {
         Rectangle selectedRectangle = new Rectangle(x1, y1, x2 - x1, y2 - y1 == 0 ? 1 : y2 - y1);
-        Rectangle extendedRectangle = new Rectangle(x1, y1, Integer.MAX_VALUE, y2 - y1 == 0 ? 1 : y2 - y1);
-        int maxY1 = 0, maxY2 = y2;
-        List<TextArea> areas = new ArrayList<>();
+        Rectangle extendedRectangle = new Rectangle(0, y1, Integer.MAX_VALUE, y2 - y1 == 0 ? 1 : y2 - y1);
+        int maxY = 0;
+        int minY = y2;
+        Set<TextArea> areas = new LinkedHashSet<>();
         for (Map<TextPoint, TextArea> ent : textGrid.values()) {
             for (TextArea area : ent.values()) {
                 Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
@@ -119,25 +142,30 @@ public class TextLocationImpl implements TextLocation {
                 Rectangle rectangle = extendedRectangle.intersection(textRectangle);
                 if (!rectangle.isEmpty()) {
                     areas.add(area);
-                    maxY1 = Math.max(area.getYmin(), maxY1);
+                    maxY = Math.max(area.getYmin(), maxY);
+                    minY = Math.min(area.getYmax(), minY);
                 }
             }
         }
-        List<TextArea> excludedAreas = new ArrayList<>();
-        Rectangle excludedRectangle = new Rectangle(x2 + 1, maxY1, Integer.MAX_VALUE, maxY2 - maxY1);
-        for (Map<TextPoint, TextArea> ent : textGrid.values()) {
-            for (TextArea area : ent.values()) {
-                Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
-                                                               area.getWeight(),
-                                                               area.getHeight());
-                Rectangle exlRectangle = excludedRectangle.intersection(textRectangle);
-                Rectangle selRectangle = selectedRectangle.intersection(textRectangle);
-                if (!exlRectangle.isEmpty() && selRectangle.isEmpty()) {
-                    excludedAreas.add(area);
-                }
+        
+        List<TextArea> excludedAreas = new LinkedList<>();
+        Rectangle excludedRectangle1 = new Rectangle(0, y1, x1 - 1, minY - y1);
+        Rectangle excludedRectangle2 = new Rectangle(x2 + 1, maxY, Integer.MAX_VALUE, y2 - maxY);
+        for (TextArea area : areas) {
+            Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
+                                                           area.getWeight(),
+                                                           area.getHeight());
+            Rectangle exlRectangle1 = excludedRectangle1.intersection(textRectangle);
+            Rectangle exlRectangle2 = excludedRectangle2.intersection(textRectangle);
+            Rectangle selRectangle = selectedRectangle.intersection(textRectangle);
+            if (!exlRectangle1.isEmpty() && selRectangle.isEmpty()) {
+                excludedAreas.add(area);
+            }
+            if (!exlRectangle2.isEmpty() && selRectangle.isEmpty()) {
+                excludedAreas.add(area);
             }
         }
         areas.removeAll(excludedAreas);
-        return areas;
+        return new ArrayList<>(areas);
     }
 }

@@ -49,12 +49,12 @@ public class HistoryStore {
      * @param filePath, page, scale
      */
     public void save(String filePath, int page, BigDecimal scale, Integer delay, Language from, Language to,
-                     Integer rows) throws IOException {
+                     Integer rows, int leftSplit, int bottomSplit) throws IOException {
         if (StringUtils.isBlank(filePath)) {
             return;
         }
         String fileName = Paths.get(filePath + ".json").getFileName().toString();
-        History history = new History(filePath, page, scale, delay, from, to, rows);
+        History history = new History(filePath, page, scale, delay, from, to, rows, leftSplit, bottomSplit);
         byte[] historyBytes = jsonFactory.toPrettyString(history).getBytes("utf-8");
         Path target = Paths.get(historyDir.toAbsolutePath().toString(), fileName);
         Files.copy(new ByteArrayInputStream(historyBytes), target, StandardCopyOption.REPLACE_EXISTING);
@@ -105,13 +105,19 @@ public class HistoryStore {
         private Language to;
         @com.google.api.client.util.Key("rows")
         private Integer rows;
+        @com.google.api.client.util.Key("leftsplitsize")
+        private Integer leftSplitSize;
+        @com.google.api.client.util.Key("bottomsplitsize")
+        private Integer bottomSplitSize;
+        
+        
         private long version;
         
         public History() {
         }
         
         public History(String fileName, Integer page, BigDecimal scale, Integer delay, Language from, Language to,
-                       Integer rows) {
+                       Integer rows, Integer leftSplitSize, Integer bottomSplitSize) {
             this.filePath = fileName;
             this.page = page;
             this.scale = scale;
@@ -119,6 +125,8 @@ public class HistoryStore {
             this.from = from;
             this.to = to;
             this.rows = rows;
+            this.leftSplitSize = leftSplitSize;
+            this.bottomSplitSize = bottomSplitSize;
         }
         
         public String getFilePath() {
@@ -153,6 +161,22 @@ public class HistoryStore {
             return version;
         }
         
+        public Integer getBottomSplitSize() {
+            return bottomSplitSize;
+        }
+        
+        public void setBottomSplitSize(Integer bottomSplitSize) {
+            this.bottomSplitSize = bottomSplitSize;
+        }
+        
+        public Integer getLeftSplitSize() {
+            return leftSplitSize;
+        }
+        
+        public void setLeftSplitSize(Integer leftSplitSize) {
+            this.leftSplitSize = leftSplitSize;
+        }
+        
         @Override
         public String toString() {
             return "History{" +
@@ -163,6 +187,8 @@ public class HistoryStore {
                            ", from=" + from +
                            ", to=" + to +
                            ", rows=" + rows +
+                           ", leftSplitSize=" + leftSplitSize +
+                           ", bottomSplitSize=" + bottomSplitSize +
                            ", version=" + version +
                            '}';
         }

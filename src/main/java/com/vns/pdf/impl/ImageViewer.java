@@ -3,7 +3,6 @@ package com.vns.pdf.impl;
 import com.vns.pdf.TextArea;
 import com.vns.pdf.TextLocation;
 import com.vns.pdf.Translator;
-import com.vns.pdf.Utils;
 import com.vns.pdf.Viewer;
 import com.vns.pdf.domain.Annotation;
 import com.vns.pdf.gmodel.Dic;
@@ -417,11 +416,14 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             int y1 = (int) ((cursorY1 <= cursorY ? cursorY1 : cursorY) / imageScale);
             int y2 = (int) ((cursorY1 <= cursorY ? cursorY : cursorY1) / imageScale);
             
+            
             List<TextArea> areas = documentViewer.getDocument().getTextLocation(pageNumber).locate(
                     x1, y1, x2, y2,
-                    e.isControlDown()
-                            ? TextLocation.SelectedStartegy.EXACTLY
-                            : TextLocation.SelectedStartegy.CONTINUE);
+                    e.isControlDown() && e.isAltDown()
+                            ? TextLocation.SelectedStartegy.CUT
+                            : e.isControlDown()
+                                      ? TextLocation.SelectedStartegy.FRAMEIN
+                                      : TextLocation.SelectedStartegy.FRAMEOUT);
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (cursorX / imageScale), (int) (cursorY / imageScale));
             selectedTextScreenAreas.clear();
             selectedTextScreenAreas.addAll(areas);
@@ -429,13 +431,11 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             currentTextScreenArea = area;
             repaint();
             
-            if (e.isControlDown() && e.isAltDown()) {
+            Iterator<TextArea> it = selectedTextScreenAreas.iterator();
+            if (e.isControlDown() && e.isAltDown() && it.hasNext()) {
                 isSymbolMode = true;
                 popupMenu.removeAll();
-                TextArea ta = Utils.extractText(x1, y1, x2, y2, new ArrayList<>(selectedTextScreenAreas));
-                selectedTextScreenAreas.clear();
-                selectedTextScreenAreas.add(ta);
-                popupMenu.add(ta.getText());
+                popupMenu.add(it.next().getText());
                 popupMenu.setVisible(true);
                 popupMenu.show(ImageViewer.this, e.getX(), e.getY() + 20);
             } else if (popupMenu.isVisible()) {
