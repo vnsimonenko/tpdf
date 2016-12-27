@@ -248,17 +248,22 @@ class PdfDocument {
     
     private ActionData parsePDDestination(PDDestination dest) throws IOException {
         if (dest != null) {
-            float destZoom = -1;
-            int destX = -1;
-            int destY = -1;
-            if (dest instanceof PDPageXYZDestination) {
-                PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
-                destZoom = destXYZ.getZoom();
-                destX = destXYZ.getLeft();
-                destY = destXYZ.getTop();
+            if (dest instanceof PDNamedDestination) {
+                return parsePDDestination(document.getDocumentCatalog().findNamedDestinationPage((PDNamedDestination) dest));
             }
-            int destPage = ((PDPageDestination) dest).retrievePageNumber();
-            return destPage < 0 ? null : new ActionData(destX, destY, destPage, destZoom);
+            if (dest instanceof PDPageDestination) {
+                float destZoom = -1;
+                int destX = -1;
+                int destY = -1;
+                if (dest instanceof PDPageXYZDestination) {
+                    PDPageXYZDestination destXYZ = (PDPageXYZDestination) dest;
+                    destZoom = destXYZ.getZoom();
+                    destX = destXYZ.getLeft();
+                    destY = destXYZ.getTop();
+                }
+                int destPage = ((PDPageDestination) dest).retrievePageNumber();
+                return destPage < 0 ? null : new ActionData(destX, destY, destPage, destZoom);
+            }
         }
         return null;
     }
