@@ -28,6 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -50,6 +52,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
@@ -109,6 +112,7 @@ class PdfDocument {
             pdfTextStripper.writeText(document, dummy);
             parseBookmarksAnnotation();
             createTextAreaFile();
+            //document.save(pdfFileName + ".pdf");
         } else {
             loadTextAreaFile();
         }
@@ -243,6 +247,27 @@ class PdfDocument {
             PDNamedDestination nameDest = (PDNamedDestination) ((PDActionGoTo) action).getDestination();
             dest = document.getDocumentCatalog().findNamedDestinationPage(nameDest);
         }
+//        if (action instanceof PDActionURI) 
+//            try {
+//                final PDActionURI linkUri = (PDActionURI) action;
+//                URI u = new URI(linkUri.getURI());
+//                if ("file".equalsIgnoreCase(u.getScheme())) {
+//                    Path path1 = Paths.get(u.getPath());
+//                    String s = path1.toAbsolutePath().toString();
+//                    boolean b = s.endsWith(".html");
+//                    if (b) {
+//                        s = s.substring(0, s.length() - 5) + ".pdf";
+//                        Path path2 = Paths.get(pdfFileName).getParent();
+//                        path1 = Paths.get(s);
+//                        Path pathRelative = path2.relativize(path1);
+//                        System.out.println(pathRelative);
+//                        System.out.println(linkUri.getURI());
+//                        ((PDActionURI) action).setURI(pathRelative.toString());
+//                    }
+//                }
+//            } catch (URISyntaxException ex) {
+//                ex.printStackTrace();
+//            }
         return parsePDDestination(dest);
     }
     
