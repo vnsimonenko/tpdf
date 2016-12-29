@@ -96,8 +96,7 @@ class PdfDocument {
         document = PDDocument.load(new File(pdfFileName));
         pdfRenderer = new PDFRenderer(document);
         
-        //if (Files.notExists(textAreaFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        if (1==1) {
+        if (Files.notExists(textAreaFilePath, LinkOption.NOFOLLOW_LINKS)) {
             pdfTextStripper.setSortByPosition(false);
             pdfTextStripper.setStartPage(0);
             pdfTextStripper.setEndPage(document.getNumberOfPages());
