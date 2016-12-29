@@ -96,7 +96,8 @@ class PdfDocument {
         document = PDDocument.load(new File(pdfFileName));
         pdfRenderer = new PDFRenderer(document);
         
-        if (Files.notExists(textAreaFilePath, LinkOption.NOFOLLOW_LINKS)) {
+        //if (Files.notExists(textAreaFilePath, LinkOption.NOFOLLOW_LINKS)) {
+        if (1==1) {
             pdfTextStripper.setSortByPosition(false);
             pdfTextStripper.setStartPage(0);
             pdfTextStripper.setEndPage(document.getNumberOfPages());
@@ -224,6 +225,9 @@ class PdfDocument {
                 }
                 
                 ActionData actionData = parsePDAction(link.getAction());
+                if (actionData == null) {
+                    actionData = parsePDDestination(link.getDestination());
+                }
                 if (actionData != null) {
                     Annotation a = new Annotation(x, y, width, height,
                                                          actionData.destX, actionData.destY,
