@@ -1,5 +1,6 @@
 package com.vns.pdf.domain;
 
+import java.util.Collections;
 import java.util.List;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -25,6 +26,6 @@ public class Doc {
     }
     
     public List<Annotation> getBookmarks() {
-        return bookmarks;
+        return bookmarks == null ? Collections.emptyList() : bookmarks;
     }
 }

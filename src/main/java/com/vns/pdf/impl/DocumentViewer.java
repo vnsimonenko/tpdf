@@ -957,11 +957,12 @@ public class DocumentViewer extends JPanel {
                     if (units == 0) {
                         scrollingTimer.stop();
                         return;
+           
                     }
                     try {
                         int y = imageScrollPane.getVerticalScrollBar().getValue();
-                        int offset = Math.abs(units) < 20
-                                             ? Math.abs(units) * 10
+                        int offset = Math.abs(units) < 50
+                                             ? Math.abs(units) * 30
                                              : (int) (Math.pow(Math.abs(units), 2));
                         imageScrollPane.getVerticalScrollBar().setValue(y + units * offset);
                     } finally {
