@@ -158,7 +158,8 @@ class PdfDocument {
             ms.setProperty(JAXB_FORMATTED_OUTPUT, true);
             ms.setProperty(CharacterEscapeHandler.class.getName(), (CharacterEscapeHandler) (ch, start, length, isAttVal, out) -> {
                 String escape = StringEscapeUtils.escapeXml11(new String(ch));
-                out.write(escape.toCharArray(), 0, escape.toCharArray().length);
+                if (!escape.contains("&#")) 
+                    out.write(escape.toCharArray(), 0, escape.toCharArray().length);
             });
             ms.marshal(doc, new File(pageXmlFileName));
         } catch (JAXBException ex) {
