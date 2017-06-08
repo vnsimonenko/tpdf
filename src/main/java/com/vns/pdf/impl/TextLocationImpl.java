@@ -19,8 +19,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TextLocationImpl implements TextLocation {
+    
+    private final static Logger LOGGER = LoggerFactory.getLogger(TextLocationImpl.class);
     
     private int stepWidth = 10;
     private int stepHeigt = 10;
@@ -55,10 +59,10 @@ public class TextLocationImpl implements TextLocation {
         return null;
     }
     
-    public List<TextArea> locate(int x1, int y1, int x2, int y2, SelectedStartegy strategy) {
+    public List<TextArea> locate(int x1, int y1, int x2, int y2, TextPoint firstXY, SelectedStartegy strategy) {
         switch (strategy) {
             case FRAMEOUT:
-                return locateFrameOut(x1, y1, x2, y2);
+                return locateFrameOut(x1, y1, x2, y2, firstXY);
             case FRAMEIN:
                 return locateFrameIn(x1, y1, x2, y2);
             case CUT:
@@ -128,7 +132,7 @@ public class TextLocationImpl implements TextLocation {
         return new ArrayList<>(areas);
     }
     
-    private List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2) {
+    private List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2, TextPoint firstXY) {
         Rectangle selectedRectangle = new Rectangle(x1, y1, x2 - x1, y2 - y1 == 0 ? 1 : y2 - y1);
         Rectangle extendedRectangle = new Rectangle(0, y1, Integer.MAX_VALUE, y2 - y1 == 0 ? 1 : y2 - y1);
         int maxY = 0;
@@ -150,18 +154,30 @@ public class TextLocationImpl implements TextLocation {
         
         List<TextArea> excludedAreas = new LinkedList<>();
         Rectangle excludedRectangle1 = new Rectangle(0, y1, x1 - 1, minY - y1);
+        int x12 = x1 < firstXY.x ? firstXY.x : x1;
+        Rectangle excludedRectangle12 = new Rectangle(0, y1, x12 - 1, minY - y1);
         Rectangle excludedRectangle2 = new Rectangle(x2 + 1, maxY, Integer.MAX_VALUE, y2 - maxY);
+        int x22 = x2 < firstXY.x ? x2 : x1;
+        Rectangle excludedRectangle22 = new Rectangle(x22 + 1, maxY, Integer.MAX_VALUE, y2 - maxY);
         for (TextArea area : areas) {
             Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
                                                            area.getWeight(),
                                                            area.getHeight());
             Rectangle exlRectangle1 = excludedRectangle1.intersection(textRectangle);
             Rectangle exlRectangle2 = excludedRectangle2.intersection(textRectangle);
+            Rectangle exlRectangle12 = excludedRectangle12.intersection(textRectangle);
+            Rectangle exlRectangle22 = excludedRectangle22.intersection(textRectangle);
             Rectangle selRectangle = selectedRectangle.intersection(textRectangle);
             if (!exlRectangle1.isEmpty() && selRectangle.isEmpty()) {
                 excludedAreas.add(area);
             }
             if (!exlRectangle2.isEmpty() && selRectangle.isEmpty()) {
+                excludedAreas.add(area);
+            }
+            if (area.getYmax() <= (y2 - 5) && !exlRectangle12.isEmpty()) {
+                excludedAreas.add(area);
+            }
+            if (area.getYmin() > minY && firstXY.x > x1 && !exlRectangle22.isEmpty()) {
                 excludedAreas.add(area);
             }
         }

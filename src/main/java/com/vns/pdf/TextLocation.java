@@ -6,7 +6,7 @@ import java.util.List;
 public interface TextLocation {
     TextArea locate(int x, int y);
     
-    List<TextArea> locate(int x1, int y1, int x2, int y2, SelectedStartegy strategy);
+    List<TextArea> locate(int x1, int y1, int x2, int y2, TextPoint firstXY, SelectedStartegy strategy);
     
     Collection<? extends TextArea> getTextAreas();
     

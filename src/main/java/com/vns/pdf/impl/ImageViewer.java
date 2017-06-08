@@ -2,6 +2,7 @@ package com.vns.pdf.impl;
 
 import com.vns.pdf.TextArea;
 import com.vns.pdf.TextLocation;
+import com.vns.pdf.TextPoint;
 import com.vns.pdf.Translator;
 import com.vns.pdf.Viewer;
 import com.vns.pdf.domain.Annotation;
@@ -418,7 +419,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             
             
             List<TextArea> areas = documentViewer.getDocument().getTextLocation(pageNumber).locate(
-                    x1, y1, x2, y2,
+                    x1, y1, x2, y2, new TextPoint(cursorX1 / imageScale, cursorY1 / imageScale),
                     e.isControlDown() && e.isAltDown()
                             ? TextLocation.SelectedStartegy.CUT
                             : e.isControlDown()

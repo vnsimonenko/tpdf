@@ -8,6 +8,11 @@ public class TextPoint {
         this.x = x;
         this.y = y;
     }
+
+    public TextPoint(double x, double y) {
+        this.x = (int) x;
+        this.y = (int) y;
+    }
     
     @Override
     public boolean equals(Object o) {
