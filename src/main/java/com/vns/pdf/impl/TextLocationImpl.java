@@ -169,7 +169,7 @@ public class TextLocationImpl implements TextLocation {
         }
         boolean multiRows = !topAreas.containsAll(bottomAreas);
     
-        int x11, x12, x21, x22 = x11 = x21 = x12 = 0;
+        int x11, x12, x21, x22;
         
         if (!multiRows) {
             for (TextArea area : topAreas) {
