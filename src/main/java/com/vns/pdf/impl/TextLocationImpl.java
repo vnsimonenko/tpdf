@@ -11,12 +11,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -132,12 +135,9 @@ public class TextLocationImpl implements TextLocation {
         return new ArrayList<>(areas);
     }
     
-    private List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2, TextPoint firstXY) {
-        Rectangle selectedRectangle = new Rectangle(x1, y1, x2 - x1, y2 - y1 == 0 ? 1 : y2 - y1);
+    List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2, TextPoint firstXY) {
+        List<TextArea> textAreas = new ArrayList<>();
         Rectangle extendedRectangle = new Rectangle(0, y1, Integer.MAX_VALUE, y2 - y1 == 0 ? 1 : y2 - y1);
-        int maxY = 0;
-        int minY = y2;
-        Set<TextArea> areas = new LinkedHashSet<>();
         for (Map<TextPoint, TextArea> ent : textGrid.values()) {
             for (TextArea area : ent.values()) {
                 Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
@@ -145,43 +145,67 @@ public class TextLocationImpl implements TextLocation {
                                                                area.getHeight());
                 Rectangle rectangle = extendedRectangle.intersection(textRectangle);
                 if (!rectangle.isEmpty()) {
-                    areas.add(area);
-                    maxY = Math.max(area.getYmin(), maxY);
-                    minY = Math.min(area.getYmax(), minY);
+                    textAreas.add(area);
                 }
             }
         }
+        List<TextArea> topAreas = new ArrayList<>();
+        List<TextArea> bottomAreas = new ArrayList<>();
+        for (TextArea area1 : textAreas) {
+            TextArea noTop = null;
+            TextArea noBottom = null;
+            for (TextArea area2 : textAreas) {
+                if (area1 == area2) continue;
+                if (area1.getYmin() >= area2.getYmax()) {
+                    noTop = area1;
+                }
+                if (area1.getYmax() <= area2.getYmin()) {
+                    noBottom = area1;
+                }
+                if (noTop != null && noBottom != null) break;
+            }
+            if (noTop == null) topAreas.add(area1);
+            if (noBottom == null) bottomAreas.add(area1);
+        }
+        boolean multiRows = !topAreas.containsAll(bottomAreas);
+    
+        int x11, x12, x21, x22 = x11 = x21 = x12 = 0;
         
-        List<TextArea> excludedAreas = new LinkedList<>();
-        Rectangle excludedRectangle1 = new Rectangle(0, y1, x1 - 1, minY - y1);
-        int x12 = x1 < firstXY.x ? firstXY.x : x1;
-        Rectangle excludedRectangle12 = new Rectangle(0, y1, x12 - 1, minY - y1);
-        Rectangle excludedRectangle2 = new Rectangle(x2 + 1, maxY, Integer.MAX_VALUE, y2 - maxY);
-        int x22 = x2 < firstXY.x ? x2 : x1;
-        Rectangle excludedRectangle22 = new Rectangle(x22 + 1, maxY, Integer.MAX_VALUE, y2 - maxY);
-        for (TextArea area : areas) {
-            Rectangle textRectangle = new Rectangle(area.getXmin(), area.getYmin(),
-                                                           area.getWeight(),
-                                                           area.getHeight());
-            Rectangle exlRectangle1 = excludedRectangle1.intersection(textRectangle);
-            Rectangle exlRectangle2 = excludedRectangle2.intersection(textRectangle);
-            Rectangle exlRectangle12 = excludedRectangle12.intersection(textRectangle);
-            Rectangle exlRectangle22 = excludedRectangle22.intersection(textRectangle);
-            Rectangle selRectangle = selectedRectangle.intersection(textRectangle);
-            if (!exlRectangle1.isEmpty() && selRectangle.isEmpty()) {
-                excludedAreas.add(area);
+        if (!multiRows) {
+            for (TextArea area : topAreas) {
+                if (x1 > area.getXmax() || x2 < area.getXmin())
+                    textAreas.remove(area);
             }
-            if (!exlRectangle2.isEmpty() && selRectangle.isEmpty()) {
-                excludedAreas.add(area);
-            }
-            if (area.getYmax() <= (y2 - 5) && !exlRectangle12.isEmpty()) {
-                excludedAreas.add(area);
-            }
-            if (area.getYmin() > minY && firstXY.x > x1 && !exlRectangle22.isEmpty()) {
-                excludedAreas.add(area);
+        } else {
+            if (firstXY.y > y1) {
+                x11 = firstXY.x > x1 ? x1 : x2;
+                x12 = Integer.MAX_VALUE;
+                for (TextArea area : topAreas) {
+                    if (x11 > area.getXmax()) 
+                        textAreas.remove(area);
+                }
+                x21 = 0;
+                x22 = firstXY.x;
+                for (TextArea area : bottomAreas) {
+                    if (x21 > area.getXmax() || x22 < area.getXmin()) 
+                        textAreas.remove(area);
+                    
+                }
+            } else {
+                x11 = firstXY.x;
+                x12 = Integer.MAX_VALUE;
+                for (TextArea area : topAreas) {
+                    if (x11 > area.getXmax()) 
+                        textAreas.remove(area);
+                }
+                x21 = 0;
+                x22 = firstXY.x > x1 ? x1 : x2;
+                for (TextArea area : bottomAreas) {
+                    if (x21 > area.getXmax() || x22 < area.getXmin()) 
+                        textAreas.remove(area);
+                }
             }
         }
-        areas.removeAll(excludedAreas);
-        return new ArrayList<>(areas);
+        return textAreas;
     }
 }
