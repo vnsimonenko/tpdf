@@ -707,9 +707,11 @@ public class DocumentViewer extends JPanel {
     public void setIndicatorPage(int page) {
         currentPage = page;
         ActionListener[] ls = pagesCombobox.getActionListeners();
-        pagesCombobox.removeActionListener(ls[0]);
+        if (ls.length > 0)
+            pagesCombobox.removeActionListener(ls[0]);
         pagesCombobox.setSelectedIndex(page);
-        pagesCombobox.addActionListener(ls[0]);
+        if (ls.length > 0)
+            pagesCombobox.addActionListener(ls[0]);
         if (buttonByCommandName.containsKey(PREVIOUS))
             buttonByCommandName.get(PREVIOUS).setEnabled(currentPage > 0);
         if (buttonByCommandName.containsKey(NEXT))
@@ -983,14 +985,14 @@ public class DocumentViewer extends JPanel {
                 }
             });
             thread.start();
-            scrollingTimer = new javax.swing.Timer(1000, new ActionListener() {
+            scrollingTimer = new javax.swing.Timer(100, new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (units < 10) {
-                        offset = 30;
-                    } else if (units < 100) {
+                    if (units < 2) {
+                        offset = 20;
+                    } else if (units < 50) {
                         offset = 50;
-                    } else if (units < 150) {
+                    } else if (units < 100) {
                         offset = 100;
                     } else {
                         offset = 200;
