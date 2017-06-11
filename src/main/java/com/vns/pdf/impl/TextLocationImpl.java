@@ -62,10 +62,10 @@ public class TextLocationImpl implements TextLocation {
         return null;
     }
     
-    public List<TextArea> locate(int x1, int y1, int x2, int y2, TextPoint firstXY, SelectedStartegy strategy) {
+    public List<TextArea> locate(int x1, int y1, int x2, int y2, int firstX, int firstY, SelectedStartegy strategy) {
         switch (strategy) {
             case FRAMEOUT:
-                return locateFrameOut(x1, y1, x2, y2, firstXY);
+                return locateFrameOut(x1, y1, x2, y2, firstX, firstY);
             case FRAMEIN:
                 return locateFrameIn(x1, y1, x2, y2);
             case CUT:
@@ -135,7 +135,7 @@ public class TextLocationImpl implements TextLocation {
         return new ArrayList<>(areas);
     }
     
-    List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2, TextPoint firstXY) {
+    List<TextArea> locateFrameOut(int x1, int y1, int x2, int y2, int firstX, int firstY) {
         List<TextArea> textAreas = new ArrayList<>();
         Rectangle extendedRectangle = new Rectangle(0, y1, Integer.MAX_VALUE, y2 - y1 == 0 ? 1 : y2 - y1);
         for (Map<TextPoint, TextArea> ent : textGrid.values()) {
@@ -177,33 +177,22 @@ public class TextLocationImpl implements TextLocation {
                     textAreas.remove(area);
             }
         } else {
-            if (firstXY.y > y1) {
-                x11 = firstXY.x > x1 ? x1 : x2;
-                x12 = Integer.MAX_VALUE;
-                for (TextArea area : topAreas) {
-                    if (x11 > area.getXmax()) 
-                        textAreas.remove(area);
-                }
-                x21 = 0;
-                x22 = firstXY.x;
-                for (TextArea area : bottomAreas) {
-                    if (x21 > area.getXmax() || x22 < area.getXmin()) 
-                        textAreas.remove(area);
-                    
-                }
+            x12 = Integer.MAX_VALUE;
+            x21 = 0;
+            if (firstY > y1) {
+                x11 = firstX > x1 ? x1 : x2;
+                x22 = firstX;
             } else {
-                x11 = firstXY.x;
-                x12 = Integer.MAX_VALUE;
-                for (TextArea area : topAreas) {
-                    if (x11 > area.getXmax()) 
-                        textAreas.remove(area);
-                }
-                x21 = 0;
-                x22 = firstXY.x > x1 ? x1 : x2;
-                for (TextArea area : bottomAreas) {
-                    if (x21 > area.getXmax() || x22 < area.getXmin()) 
-                        textAreas.remove(area);
-                }
+                x11 = firstX;
+                x22 = firstX > x1 ? x1 : x2;
+            }
+            for (TextArea area : topAreas) {
+                if (x11 > area.getXmax())
+                    textAreas.remove(area);
+            }
+            for (TextArea area : bottomAreas) {
+                if (x21 > area.getXmax() || x22 < area.getXmin())
+                    textAreas.remove(area);
             }
         }
         return textAreas;

@@ -37,8 +37,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
@@ -113,6 +119,7 @@ public class DocumentViewer extends JPanel {
     private JTextArea messageArea;
     private JSplitPane viewSplitPane;
     private JSplitPane workingSplitPane;
+    private Lock mouseWheelMovedLock = new ReentrantLock();
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -948,37 +955,57 @@ public class DocumentViewer extends JPanel {
     public class MouseWheelMovedAdapter extends MouseAdapter {
         
         private final Timer scrollingTimer;
-        private int units;
+        private volatile int units;
+        private volatile int direct;
+        private volatile int offset;
+        private Thread thread;
         
         public MouseWheelMovedAdapter(final JScrollPane imageScrollPane) {
-            scrollingTimer = new javax.swing.Timer(100, new ActionListener() {
+            thread = new Thread(new Runnable() {
                 @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (units == 0) {
-                        scrollingTimer.stop();
-                        return;
-           
-                    }
+                public void run() {
+                    long inactivityTime = System.currentTimeMillis();
                     try {
-                        int y = imageScrollPane.getVerticalScrollBar().getValue();
-                        int offset = Math.abs(units) < 50
-                                             ? Math.abs(units) * 30
-                                             : (int) (Math.pow(Math.abs(units), 2));
-                        imageScrollPane.getVerticalScrollBar().setValue(y + units * offset);
-                    } finally {
-                        units = 0;
+                        while (!Thread.interrupted()) {
+                            while (direct != 0) {
+                                int y = imageScrollPane.getVerticalScrollBar().getValue();
+                                imageScrollPane.getVerticalScrollBar().setValue(y + direct * offset);
+                                inactivityTime = System.currentTimeMillis();
+                                direct = 0;
+                            }
+                            if (System.currentTimeMillis() - inactivityTime > 1000) {
+                                Thread.sleep(100);
+                            }
+                        }
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
                     }
                 }
             });
+            thread.start();
+            scrollingTimer = new javax.swing.Timer(1000, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (units < 10) {
+                        offset = 30;
+                    } else if (units < 100) {
+                        offset = 50;
+                    } else if (units < 150) {
+                        offset = 100;
+                    } else {
+                        offset = 200;
+                    }
+                    units = 0;
+                }
+            });
+            scrollingTimer.start();
         }
         
         @Override
         public void mouseWheelMoved(MouseWheelEvent e) {
             if (e.getScrollType() == WHEEL_UNIT_SCROLL) {
-                units += e.getUnitsToScroll() > 0 ? 1 : -1;
-            }
-            if (units != 0 && !scrollingTimer.isRunning()) {
-                scrollingTimer.start();
+                direct = e.getUnitsToScroll() > 0 ? 1 : -1;
+                units++;
             }
         }
     }

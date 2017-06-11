@@ -416,10 +416,11 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             int x2 = (int) ((cursorX1 <= cursorX ? cursorX : cursorX1) / imageScale);
             int y1 = (int) ((cursorY1 <= cursorY ? cursorY1 : cursorY) / imageScale);
             int y2 = (int) ((cursorY1 <= cursorY ? cursorY : cursorY1) / imageScale);
-            
+            int firstX = (int) (cursorX1 / imageScale);
+            int firstY = (int) (cursorY1 / imageScale);
             
             List<TextArea> areas = documentViewer.getDocument().getTextLocation(pageNumber).locate(
-                    x1, y1, x2, y2, new TextPoint(cursorX1 / imageScale, cursorY1 / imageScale),
+                    x1, y1, x2, y2, firstX, firstY,
                     e.isControlDown() && e.isAltDown()
                             ? TextLocation.SelectedStartegy.CUT
                             : e.isControlDown()
