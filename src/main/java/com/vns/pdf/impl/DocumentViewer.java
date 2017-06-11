@@ -970,6 +970,7 @@ public class DocumentViewer extends JPanel {
                     try {
                         while (!Thread.interrupted()) {
                             while (direct != 0) {
+                                setOffset(units);
                                 int y = imageScrollPane.getVerticalScrollBar().getValue();
                                 imageScrollPane.getVerticalScrollBar().setValue(y + direct * offset);
                                 inactivityTime = System.currentTimeMillis();
@@ -985,28 +986,31 @@ public class DocumentViewer extends JPanel {
                 }
             });
             thread.start();
-            scrollingTimer = new javax.swing.Timer(100, new ActionListener() {
+            scrollingTimer = new javax.swing.Timer(500, new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (units < 2) {
-                        offset = 20;
-                    } else if (units < 50) {
-                        offset = 50;
-                    } else if (units < 100) {
-                        offset = 100;
-                    } else {
-                        offset = 200;
-                    }
                     units = 0;
                 }
             });
             scrollingTimer.start();
         }
         
+        private void setOffset(int units) {
+            if (units < 2) {
+                offset = 20;
+            } else if (units < 50) {
+                offset = 50;
+            } else if (units < 100) {
+                offset = 100;
+            } else {
+                offset = 200;
+            }
+        }
+        
         @Override
         public void mouseWheelMoved(MouseWheelEvent e) {
             if (e.getScrollType() == WHEEL_UNIT_SCROLL) {
-                direct = e.getUnitsToScroll() > 0 ? 1 : -1;
+                direct = e.getUnitsToScroll() == 0 ? 0 : e.getUnitsToScroll() > 0 ? 1 : -1;
                 units++;
             }
         }
