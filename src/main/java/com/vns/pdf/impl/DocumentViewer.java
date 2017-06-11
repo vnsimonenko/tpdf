@@ -976,7 +976,7 @@ public class DocumentViewer extends JPanel {
                                 inactivityTime = System.currentTimeMillis();
                                 direct = 0;
                             }
-                            if (System.currentTimeMillis() - inactivityTime > 1000) {
+                            if (System.currentTimeMillis() - inactivityTime > 3000) {
                                 Thread.sleep(100);
                             }
                         }
