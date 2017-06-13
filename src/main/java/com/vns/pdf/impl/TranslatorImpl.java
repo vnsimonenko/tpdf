@@ -38,6 +38,10 @@ public class TranslatorImpl implements Translator {
     //http://www.ehcache.org/documentation/3.1/cache-event-listeners.html
     private BlockingQueue<TranslatorEvent> translatorEvents = new LinkedBlockingQueue<>();
     
+    private long lastTimeInMillis = System.currentTimeMillis();
+    private final Object translationSync = new Object();
+    private final long DELAY_MILLIS = 500;
+    
     private TranslatorImpl() {
         CacheEventListenerConfigurationBuilder cacheEventListenerConfiguration = CacheEventListenerConfigurationBuilder
                                                                                          .newEventListenerConfiguration(
@@ -98,10 +102,11 @@ public class TranslatorImpl implements Translator {
         thread.start();
     }
     
-    public Dics translate(TranslatorEvent event) {
+    public synchronized Dics translate(TranslatorEvent event) {
         if (StringUtils.isBlank(event.getText())) {
             return new Dics();
         }
+        
         String srcNormal = normalize(event.getText());
         String ext = ("" + srcLang + trgLang).toLowerCase();
         Dics dics = cache.get(srcNormal + "." + ext);
@@ -110,6 +115,7 @@ public class TranslatorImpl implements Translator {
                 String dataStoreName = isSingleWord(srcNormal) ? "dict." + ext : "text." + ext;
                 String rawDict = dataManager.read(dataStoreName, srcNormal);
                 if (rawDict == null) {
+                    delayIfNecessary();
                     dics = googleReceiver.translate(srcNormal, srcLang.get(), trgLang.get());
                     dataManager.save(dataStoreName, srcNormal, dics.getRawText());
                 } else {
@@ -173,6 +179,23 @@ public class TranslatorImpl implements Translator {
     private boolean isSingleWord(String text) {
         String s = StringUtils.defaultString(text.trim(), "").trim();
         return !s.matches(".*[ ]+.*");
+    }
+    
+    private void delayIfNecessary() {
+        synchronized (translationSync) {
+            long delay = System.currentTimeMillis() - lastTimeInMillis;
+            if (delay < DELAY_MILLIS) {
+                LOGGER.info("Delay in translation is less than the limit " + delay + ", limit is " + DELAY_MILLIS);
+                try {
+                    Thread.sleep(DELAY_MILLIS - delay);
+                    LOGGER.info("Delay in translation is " + (DELAY_MILLIS - delay));
+                } catch (InterruptedException ex) {
+                    LOGGER.error(ex.getMessage());
+                    Thread.currentThread().interrupt();
+                }
+            }
+            lastTimeInMillis = System.currentTimeMillis();
+        }
     }
     
     static class TranslatedCacheEventListener implements CacheEventListener<String, String> {

@@ -45,6 +45,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
@@ -54,8 +56,10 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -64,6 +68,7 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.text.DefaultEditorKit;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
@@ -232,6 +237,16 @@ public class DocumentViewer extends JPanel {
         workingPane.setLayout(new BorderLayout());
         messageArea = new JTextArea();
         messageArea.setLineWrap(true);
+        JPopupMenu messageAreaMenu = new JPopupMenu();
+        Action copyAction = new AbstractAction(DefaultEditorKit.copyAction) {
+            public void actionPerformed(ActionEvent e) {
+                messageArea.copy();
+            }
+        };
+        JMenuItem copyMenuItem = new JMenuItem(copyAction);
+        messageAreaMenu.add(copyMenuItem);
+        messageArea.setComponentPopupMenu(messageAreaMenu);
+                
         JScrollPane messagePane = new JScrollPane(messageArea);
         
         viewSplitPane.setTopComponent(workingPane);
