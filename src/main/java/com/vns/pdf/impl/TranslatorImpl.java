@@ -39,7 +39,6 @@ public class TranslatorImpl implements Translator {
     private BlockingQueue<TranslatorEvent> translatorEvents = new LinkedBlockingQueue<>();
     
     private long lastTimeInMillis = System.currentTimeMillis();
-    private final Object translationSync = new Object();
     private final long DELAY_MILLIS = 500;
     
     private TranslatorImpl() {
@@ -181,21 +180,19 @@ public class TranslatorImpl implements Translator {
         return !s.matches(".*[ ]+.*");
     }
     
-    private void delayIfNecessary() {
-        synchronized (translationSync) {
-            long delay = System.currentTimeMillis() - lastTimeInMillis;
-            if (delay < DELAY_MILLIS) {
-                LOGGER.info("Delay in translation is less than the limit " + delay + ", limit is " + DELAY_MILLIS);
-                try {
-                    Thread.sleep(DELAY_MILLIS - delay);
-                    LOGGER.info("Delay in translation is " + (DELAY_MILLIS - delay));
-                } catch (InterruptedException ex) {
-                    LOGGER.error(ex.getMessage());
-                    Thread.currentThread().interrupt();
-                }
+    private synchronized void delayIfNecessary() {
+        long delay = System.currentTimeMillis() - lastTimeInMillis;
+        if (delay < DELAY_MILLIS) {
+            LOGGER.info("Delay in translation is less than the limit " + delay + ", limit is " + DELAY_MILLIS);
+            try {
+                Thread.sleep(DELAY_MILLIS - delay);
+                LOGGER.info("Delay in translation is " + (DELAY_MILLIS - delay));
+            } catch (InterruptedException ex) {
+                LOGGER.error(ex.getMessage());
+                Thread.currentThread().interrupt();
             }
-            lastTimeInMillis = System.currentTimeMillis();
         }
+        lastTimeInMillis = System.currentTimeMillis();
     }
     
     static class TranslatedCacheEventListener implements CacheEventListener<String, String> {
