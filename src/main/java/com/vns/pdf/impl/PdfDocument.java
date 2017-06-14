@@ -109,7 +109,11 @@ class PdfDocument {
             }
             
             Writer dummy = new OutputStreamWriter(new ByteArrayOutputStream());
-            pdfTextStripper.writeText(document, dummy);
+            try {
+                pdfTextStripper.writeText(document, dummy);
+            } catch (Exception ex) {
+                LOGGER.error(ex.getMessage(), ex);
+            }
             parseBookmarksAnnotation();
             createTextAreaFile();
             //document.save(pdfFileName + ".pdf");
