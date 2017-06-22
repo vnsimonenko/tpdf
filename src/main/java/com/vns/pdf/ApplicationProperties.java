@@ -113,6 +113,7 @@ public interface ApplicationProperties {
         GoogleClientSecretUrl,
         GoogleDirectoryId,
         HistoryDir,
-        PatternCompile
+        PatternCompile,
+        Clipboard
     }
 }

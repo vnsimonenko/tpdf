@@ -49,6 +49,7 @@ import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -112,6 +113,7 @@ public class DocumentViewer extends JPanel {
     private JButton openBookButton;
     private JFileChooser fileChooser;
     private JToolBar toolBar;
+    private JCheckBox clipboardCheckBox;
     private Color color = new Color(150, 150, 150);
     private Color origColor;
     private volatile boolean lock;
@@ -139,8 +141,9 @@ public class DocumentViewer extends JPanel {
                 Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
                 int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
                 int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
+                boolean isCopyingClipbord = clipboardCheckBox.isSelected();
                 historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                        getTranslatedDelay(), srcLng, trgLng, rows, left, bottom);
+                        getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord);
                 if (document != null) document.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -184,9 +187,7 @@ public class DocumentViewer extends JPanel {
                             && (keyEvent.getModifiersEx() & CTRL_DOWN_MASK) == CTRL_DOWN_MASK
                             && (keyEvent.getKeyCode() & VK_WINDOWS) == VK_WINDOWS
                             && !StringUtils.isBlank(lastMessage)) {
-                    StringSelection selection = new StringSelection(lastMessage);
-                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clipboard.setContents(selection, selection);
+                    copyToClipboard(lastMessage);
                 }
             }
         }, KEY_EVENT_MASK);
@@ -226,6 +227,9 @@ public class DocumentViewer extends JPanel {
             messageArea.insert("\n=====\n\n", 0);
             messageArea.insert(msg, 0);
             lastMessage = msg;
+            if (clipboardCheckBox.isSelected()) {
+                copyToClipboard(lastMessage);  
+            }
         }
     }
     
@@ -595,6 +599,16 @@ public class DocumentViewer extends JPanel {
         trgLanguage.setFocusable(false);
     }
     
+    private void addClipboard(JToolBar toolBar) {
+        clipboardCheckBox = new JCheckBox();
+        boolean isCopyingClipboard = ApplicationProperties.KEY.Clipboard.asBoolean();
+        clipboardCheckBox.setSelected(isCopyingClipboard);
+        toolBar.add(new JLabel("clipb: "));
+        toolBar.add(clipboardCheckBox);
+        toolBar.addSeparator();
+        clipboardCheckBox.setFocusable(false);
+    }
+    
     private void addOpenFile(JToolBar toolBar) {
         String imgLocation = "images/book.png";
         URL imageURL = getClass().getClassLoader().getResource(imgLocation);
@@ -748,6 +762,7 @@ public class DocumentViewer extends JPanel {
         add(toolBar, BorderLayout.PAGE_START);
         
         addOpenFile(toolBar);
+        addClipboard(toolBar);
         addLanguage(toolBar);
         addTranslatedLength(toolBar);
         addTranslatedRows(toolBar);
@@ -768,8 +783,9 @@ public class DocumentViewer extends JPanel {
             Integer rows = translatedRows.getItemAt(translatedRows.getSelectedIndex());
             int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
             int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
+            boolean isCopyingClipbord = clipboardCheckBox.isSelected();
             historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                    getTranslatedDelay(), srcLng, trgLng, rows, left, bottom);
+                    getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord);
         }
         
         pdfFilePath = pdfFileName;
@@ -822,6 +838,7 @@ public class DocumentViewer extends JPanel {
             DefaultComboBoxModel<Integer> rowsModel = (DefaultComboBoxModel<Integer>) translatedRows.getModel();
             index = rowsModel.getIndexOf(selectedHistory.getRows());
             if (index != -1) translatedRows.setSelectedIndex(index);
+            clipboardCheckBox.setSelected(selectedHistory.getClipboard());
         }
         
         contentPane.removeAll();
@@ -932,6 +949,12 @@ public class DocumentViewer extends JPanel {
             });
             viewPanel.add(f);
         }
+    }
+    
+    private static void copyToClipboard(String message) {
+        StringSelection selection = new StringSelection(message);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(selection, selection);
     }
     
     private enum OptionAdapter {
