@@ -16,6 +16,8 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -37,12 +39,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.swing.AbstractAction;
@@ -83,9 +81,11 @@ import org.slf4j.LoggerFactory;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
 import static java.awt.AWTEvent.KEY_EVENT_MASK;
+import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import static java.awt.event.KeyEvent.KEY_PRESSED;
 import static java.awt.event.KeyEvent.KEY_RELEASED;
 import static java.awt.event.KeyEvent.VK_ESCAPE;
+import static java.awt.event.KeyEvent.VK_WINDOWS;
 import static java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL;
 
 public class DocumentViewer extends JPanel {
@@ -125,6 +125,7 @@ public class DocumentViewer extends JPanel {
     private JSplitPane viewSplitPane;
     private JSplitPane workingSplitPane;
     private Lock mouseWheelMovedLock = new ReentrantLock();
+    private static volatile String lastMessage;
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -179,6 +180,14 @@ public class DocumentViewer extends JPanel {
                     documentViewer.lock(lock);
                     documentViewer.imageScrollPane.repaint();
                 }
+                if (keyEvent.getID() == KEY_PRESSED 
+                            && (keyEvent.getModifiersEx() & CTRL_DOWN_MASK) == CTRL_DOWN_MASK
+                            && (keyEvent.getKeyCode() & VK_WINDOWS) == VK_WINDOWS
+                            && !StringUtils.isBlank(lastMessage)) {
+                    StringSelection selection = new StringSelection(lastMessage);
+                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                    clipboard.setContents(selection, selection);
+                }
             }
         }, KEY_EVENT_MASK);
     }
@@ -216,6 +225,7 @@ public class DocumentViewer extends JPanel {
         if (!StringUtils.isBlank(msg)) {
             messageArea.insert("\n=====\n\n", 0);
             messageArea.insert(msg, 0);
+            lastMessage = msg;
         }
     }
     
