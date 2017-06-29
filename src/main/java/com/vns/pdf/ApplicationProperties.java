@@ -68,6 +68,11 @@ public interface ApplicationProperties {
         return getConfiguration().getString(name(), defVal(def));
     }
     
+    default String asStringIfEmpty(String... def) {
+        String value = getConfiguration().getString(name());
+        return StringUtils.defaultIfBlank(value, defVal(def));
+    }
+    
     default Integer asInt(Integer... def) {
         return getConfiguration().getInt(name(), defVal(def) == null ? 0 : defVal(def));
     }
@@ -114,6 +119,8 @@ public interface ApplicationProperties {
         GoogleDirectoryId,
         HistoryDir,
         PatternCompile,
-        Clipboard
+        Clipboard,
+        SndDictDir,
+        Phonetic
     }
 }

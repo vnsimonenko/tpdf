@@ -11,11 +11,15 @@ public interface Translator {
     
     void setTrg(Language lng);
     
+    void setPhonetic(Phonetic phonetic);
+    
+    void play(String text);
+    
     interface TranslatorEvent {
         boolean isActive();
         
         String getText();
         
-        void setTranslation(Dics dics);
+        void setTranslation(Dics dics, String transc);
     }
 }

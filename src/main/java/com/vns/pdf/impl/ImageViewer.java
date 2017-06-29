@@ -323,7 +323,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
     }
     
     @Override
-    public void setTranslation(Dics dics) {
+    public void setTranslation(Dics dics, String transc) {
         StringBuilder sb2 = new StringBuilder();
         StringBuilder sb = new StringBuilder();
         for (Dic dic : dics.getDics()) {
@@ -357,6 +357,12 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
                 sb2.append(tn.getTrans());
             }
         }
+    
+        if (!StringUtils.isBlank(transc)) {
+            sb.insert(0, "[" + transc + "]\n");
+            sb2.append("\n---transc---\n");
+            sb2.append(transc);
+        }
         
         JTextArea text = new JTextArea();
         text.setLineWrap(false);
@@ -370,7 +376,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
         if (!StringUtils.isBlank(dics.getSourceText())) {
             String msg = dics.getSourceText() + "\n\n" + sb2.toString();
             TLLOG.info("\n\n" + msg + "\n");
-            documentViewer.sendMessage(msg);
+            documentViewer.sendMessage(msg, dics.getSourceText());
         }
     }
     

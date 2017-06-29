@@ -1,8 +1,10 @@
 package com.vns.pdf.impl;
 
 import com.vns.pdf.ApplicationProperties;
+import com.vns.pdf.AudioHelper;
 import com.vns.pdf.Document;
 import com.vns.pdf.Language;
+import com.vns.pdf.Phonetic;
 import com.vns.pdf.TextArea;
 import com.vns.pdf.Viewer;
 import com.vns.pdf.domain.Annotation;
@@ -82,6 +84,7 @@ import org.slf4j.LoggerFactory;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
 import static java.awt.AWTEvent.KEY_EVENT_MASK;
+import static java.awt.event.InputEvent.ALT_DOWN_MASK;
 import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 import static java.awt.event.KeyEvent.KEY_PRESSED;
 import static java.awt.event.KeyEvent.KEY_RELEASED;
@@ -110,6 +113,7 @@ public class DocumentViewer extends JPanel {
     private JComboBox<Integer> translatedLength;
     private JComboBox<Language> srcLanguage;
     private JComboBox<Language> trgLanguage;
+    private JComboBox<Phonetic> phoneticComboBox;
     private JButton openBookButton;
     private JFileChooser fileChooser;
     private JToolBar toolBar;
@@ -128,6 +132,7 @@ public class DocumentViewer extends JPanel {
     private JSplitPane workingSplitPane;
     private Lock mouseWheelMovedLock = new ReentrantLock();
     private static volatile String lastMessage;
+    private static volatile String lastSourceText;
     
     private DocumentViewer(JFrame jFrame) throws IllegalAccessException, IOException, InstantiationException {
         super(new BorderLayout());
@@ -142,8 +147,9 @@ public class DocumentViewer extends JPanel {
                 int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
                 int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
                 boolean isCopyingClipbord = clipboardCheckBox.isSelected();
+                Phonetic phonetic = phoneticComboBox.getItemAt(phoneticComboBox.getSelectedIndex());
                 historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                        getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord);
+                        getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord, phonetic);
                 if (document != null) document.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -189,6 +195,13 @@ public class DocumentViewer extends JPanel {
                             && !StringUtils.isBlank(lastMessage)) {
                     copyToClipboard(lastMessage);
                 }
+                if (keyEvent.getID() == KEY_PRESSED 
+                            && (keyEvent.getModifiersEx() & CTRL_DOWN_MASK) != CTRL_DOWN_MASK
+                            && (keyEvent.getModifiersEx() & ALT_DOWN_MASK) != ALT_DOWN_MASK
+                            && (keyEvent.getKeyCode() & VK_WINDOWS) == VK_WINDOWS 
+                            && !StringUtils.isBlank(lastSourceText)) {
+                    documentViewer.play(lastSourceText);
+                }
             }
         }, KEY_EVENT_MASK);
     }
@@ -222,11 +235,12 @@ public class DocumentViewer extends JPanel {
         });
     }
     
-    void sendMessage(String msg) {
+    void sendMessage(String msg, String sourceText) {
         if (!StringUtils.isBlank(msg)) {
             messageArea.insert("\n=====\n\n", 0);
             messageArea.insert(msg, 0);
             lastMessage = msg;
+            lastSourceText = sourceText;
             if (clipboardCheckBox.isSelected()) {
                 copyToClipboard(lastMessage);  
             }
@@ -608,6 +622,28 @@ public class DocumentViewer extends JPanel {
         toolBar.addSeparator();
         clipboardCheckBox.setFocusable(false);
     }
+
+    private void addPhonetic(JToolBar toolBar) {
+        Phonetic[] phonetics = Phonetic.values();
+        phoneticComboBox = new JComboBox<>(phonetics);
+        phoneticComboBox.setEditable(false);
+        phoneticComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (e.getActionCommand() == "comboBoxChanged") {
+                    Phonetic phonetic = phoneticComboBox.getItemAt(phoneticComboBox.getSelectedIndex());
+                    if (getDocument() != null) {
+                        getDocument().getTranslator().setPhonetic(phonetic);
+                    }
+                }
+            }
+        });
+        phoneticComboBox.setMaximumSize(new Dimension(100, 100));
+        toolBar.add(new JLabel("tsc: "));
+        toolBar.add(phoneticComboBox);
+        toolBar.addSeparator();
+        phoneticComboBox.setFocusable(false);
+    }
     
     private void addOpenFile(JToolBar toolBar) {
         String imgLocation = "images/book.png";
@@ -763,6 +799,7 @@ public class DocumentViewer extends JPanel {
         
         addOpenFile(toolBar);
         addClipboard(toolBar);
+        addPhonetic(toolBar);
         addLanguage(toolBar);
         addTranslatedLength(toolBar);
         addTranslatedRows(toolBar);
@@ -784,8 +821,9 @@ public class DocumentViewer extends JPanel {
             int left = workingSplitPane == null ? -1 : workingSplitPane.getDividerLocation();
             int bottom = viewSplitPane == null ? -1 : viewSplitPane.getDividerLocation();
             boolean isCopyingClipbord = clipboardCheckBox.isSelected();
+            Phonetic phonetic = phoneticComboBox.getItemAt(phoneticComboBox.getSelectedIndex());
             historyStore.save(pdfFilePath, currentPage, BigDecimal.valueOf(imageScale),
-                    getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord);
+                    getTranslatedDelay(), srcLng, trgLng, rows, left, bottom, isCopyingClipbord, phonetic);
         }
         
         pdfFilePath = pdfFileName;
@@ -839,6 +877,9 @@ public class DocumentViewer extends JPanel {
             index = rowsModel.getIndexOf(selectedHistory.getRows());
             if (index != -1) translatedRows.setSelectedIndex(index);
             clipboardCheckBox.setSelected(selectedHistory.getClipboard());
+            DefaultComboBoxModel<Phonetic> phoneticModel = (DefaultComboBoxModel<Phonetic>) phoneticComboBox.getModel();
+            index = phoneticModel.getIndexOf(selectedHistory.getPhonetic());
+            if (index != -1) phoneticComboBox.setSelectedIndex(index);
         }
         
         contentPane.removeAll();
@@ -892,7 +933,12 @@ public class DocumentViewer extends JPanel {
                 lngModel = (DefaultComboBoxModel<Language>) trgLanguage.getModel();
                 index = lngModel.getIndexOf(selectedHistory.getTo());
                 if (index != -1) trgLanguage.setSelectedIndex(index);
+                DefaultComboBoxModel<Phonetic> phoneticModel = (DefaultComboBoxModel<Phonetic>) phoneticComboBox.getModel();
+                index = phoneticModel.getIndexOf(selectedHistory.getPhonetic());
+                if (index != -1) phoneticComboBox.setSelectedIndex(index);
             }
+            Phonetic phonetic = phoneticComboBox.getItemAt(phoneticComboBox.getSelectedIndex());
+            document.getTranslator().setPhonetic(phonetic);
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             openBookButton.setEnabled(true);
@@ -955,6 +1001,10 @@ public class DocumentViewer extends JPanel {
         StringSelection selection = new StringSelection(message);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(selection, selection);
+    }
+    
+    private void play(String text) {
+       getDocument().getTranslator().play(text); 
     }
     
     private enum OptionAdapter {

@@ -1,15 +1,23 @@
 package com.vns.pdf.impl;
 
+import com.google.common.io.Files;
 import com.vns.pdf.ApplicationProperties;
+import com.vns.pdf.AudioHelper;
 import com.vns.pdf.DataManager;
 import com.vns.pdf.Language;
+import com.vns.pdf.Phonetic;
 import com.vns.pdf.Translator;
 import com.vns.pdf.gmodel.Dics;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
@@ -31,9 +39,12 @@ public class TranslatorImpl implements Translator {
     private final CacheManager cacheManager;
     private final Cache<String, Dics> cache;
     private final GoogleReceiverImpl googleReceiver = new GoogleReceiverImpl();
+    private final OxfordReceiverImpl oxfordReceiver = new OxfordReceiverImpl(
+            new FileHolder(ApplicationProperties.KEY.SndDictDir.asString(Files.createTempDir().getAbsolutePath())));
     private final DataManager dataManager;
     private final AtomicReference<Language> srcLang;
     private final AtomicReference<Language> trgLang;
+    private final AtomicReference<Phonetic> phonetic;
     
     //http://www.ehcache.org/documentation/3.1/cache-event-listeners.html
     private BlockingQueue<TranslatorEvent> translatorEvents = new LinkedBlockingQueue<>();
@@ -70,6 +81,8 @@ public class TranslatorImpl implements Translator {
             srcLang.set(Language.valueOf(ApplicationProperties.KEY.SrcLang.asString("en").toUpperCase()));
             trgLang = new AtomicReference<>();
             trgLang.set(Language.valueOf(ApplicationProperties.KEY.TrgLang.asString("ru").toUpperCase()));
+            phonetic = new AtomicReference<>();
+            phonetic.set(Phonetic.valueOf(ApplicationProperties.KEY.Phonetic.asStringIfEmpty("none").toUpperCase()));
             
             dataManager = DataManager.createDataManager();
         } catch (IOException ex) {
@@ -84,12 +97,26 @@ public class TranslatorImpl implements Translator {
                     if (tevn != null && tevn.isActive()) {
                         try {
                             Dics dics = translate(tevn);
+                            String transc = "";
+                            if (Phonetic.NONE != phonetic.get()) {
+                                transc = oxfordReceiver.getTranscription(normalize(tevn.getText()), 
+                                        phonetic.get());
+                                if (StringUtils.isBlank(transc)) {
+                                    final Phonetic phn = phonetic.get();
+                                    final String text = tevn.getText();
+                                    CompletableFuture.supplyAsync(() -> transc(text)).thenAccept(s -> {
+                                        if (tevn.isActive() && text.equals(tevn.getText()) && phn == phonetic.get()) {
+                                            if (!StringUtils.isBlank(s)) doTranslation(tevn);
+                                        }
+                                    });
+                                }
+                            }
                             if (tevn.isActive()) {
-                                tevn.setTranslation(dics);
+                                tevn.setTranslation(dics, transc);
                             }
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            tevn.setTranslation(new Dics());
+                            tevn.setTranslation(new Dics(), "");
                         }
                     }
                 }
@@ -129,6 +156,29 @@ public class TranslatorImpl implements Translator {
         return dics;
     }
     
+    public synchronized String transc(String text) {
+        if (StringUtils.isBlank(text) || Phonetic.NONE == phonetic.get()) {
+            return "";
+        }
+        String srcNormal = normalize(text);
+        if (!isSingleWord(srcNormal)) {
+            return "";
+        }
+        String transc = oxfordReceiver.getTranscription(srcNormal, phonetic.get());
+        if (StringUtils.isBlank(transc)) {
+            oxfordReceiver.load(srcNormal, phonetic.get(), false);
+            transc = oxfordReceiver.getTranscription(srcNormal, phonetic.get());
+        }
+        return transc;
+    }
+    
+    public void play(String text) {
+        File f = oxfordReceiver.getFile(text, phonetic.get());
+        if (f != null) {
+            AudioHelper.play(f.getAbsolutePath());
+        }
+    }
+    
     public void doTranslation(TranslatorEvent event) {
         translatorEvents.offer(event);
     }
@@ -141,6 +191,11 @@ public class TranslatorImpl implements Translator {
     @Override
     public void setTrg(Language lng) {
         trgLang.set(lng);
+    }
+    
+    @Override
+    public void setPhonetic(Phonetic phonetic) {
+        this.phonetic.set(phonetic);
     }
     
     private String normalize(String text) {

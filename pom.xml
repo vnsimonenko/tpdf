@@ -160,6 +160,30 @@
             <artifactId>google-api-services-drive</artifactId>
             <version>v3-rev52-1.22.0</version>
         </dependency>
+        
+        <!-- json -->
+        <dependency>
+            <groupId>javax.json</groupId>
+            <artifactId>javax.json-api</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.8.2</version>
+        </dependency>
+
+        <!-- sound -->
+        <dependency>
+            <artifactId>tritonus-share</artifactId>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <version>0.3.7-2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>mp3spi</artifactId>
+            <version>1.9.5-1</version>
+        </dependency>
     </dependencies>
 
     <build>

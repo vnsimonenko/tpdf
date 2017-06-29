@@ -2,6 +2,7 @@ package com.vns.pdf.impl;
 
 import com.vns.pdf.ApplicationProperties;
 import com.vns.pdf.Language;
+import com.vns.pdf.Phonetic;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,9 +22,9 @@ public class HistoryStoreTest {
     @Test
     public void test() throws Exception {
         HistoryStore store = new HistoryStore();
-        store.save("test1", 1, BigDecimal.valueOf(100), 1000, Language.EN, Language.RU, 5, -1, -1, false);
+        store.save("test1", 1, BigDecimal.valueOf(100), 1000, Language.EN, Language.RU, 5, -1, -1, false, Phonetic.NONE);
         Thread.sleep(1000);
-        store.save("test2", 2, BigDecimal.valueOf(200), 1000, Language.EN, Language.RU, 5, -1, -1, false);
+        store.save("test2", 2, BigDecimal.valueOf(200), 1000, Language.EN, Language.RU, 5, -1, -1, false, Phonetic.NONE);
         
         List<HistoryStore.History> hs = store.read();
         for (HistoryStore.History h : hs) {
