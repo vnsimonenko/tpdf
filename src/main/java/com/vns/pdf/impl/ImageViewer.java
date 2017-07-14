@@ -387,7 +387,7 @@ public class ImageViewer extends JPanel implements Viewer, Translator.Translator
             cursorY = e.getY();
             TextArea area = documentViewer.getDocument().getTextLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
             TextArea anntArea = documentViewer.getDocument().getAnnotationLocation(pageNumber).locate((int) (e.getX() / imageScale), (int) (e.getY() / imageScale));
-            if (area == null) {
+            if (area == null || selectedTextScreenAreas.size() > 0) {
                 if (anntArea != null) changeCursor(Cursor.getDefaultCursor().getType());
                 if (Math.abs(cursorX2 - cursorX) > 10 || Math.abs(cursorY2 - cursorY) > 10)
                     selectedTextScreenAreas.clear();
